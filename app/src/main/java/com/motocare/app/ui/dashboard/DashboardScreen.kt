@@ -1,6 +1,7 @@
 package com.motocare.app.ui.dashboard
 
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,7 +34,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -91,8 +96,24 @@ fun DashboardScreen(
                 Text("Avg ${"%.1f".format(state.odometerStats.averageKmPerDay)} km/day • ${"%.0f".format(state.odometerStats.averageKmPerMonth)} km/month")
             }
         }
-        Text("Quick actions", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        val quickActionScroll = rememberScrollState()
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Quick actions", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(
+                when {
+                    quickActionScroll.canScrollBackward && quickActionScroll.canScrollForward -> "← Swipe →"
+                    quickActionScroll.canScrollBackward -> "← Swipe back"
+                    quickActionScroll.canScrollForward -> "Swipe for more →"
+                    else -> ""
+                },
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(quickActionScroll),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             QuickAction("Odometer", Icons.Outlined.Add, onAddOdometer)
             QuickAction("Maintenance", Icons.Outlined.Build, onMaintenance)
             QuickAction("Service", Icons.AutoMirrored.Outlined.ReceiptLong, onAddService)
@@ -102,6 +123,7 @@ fun DashboardScreen(
             QuickAction("Loan", Icons.Outlined.Payments, onLoan)
             QuickAction("Issue", Icons.Outlined.ReportProblem, onIssues)
         }
+        HorizontalScrollIndicator(quickActionScroll.value, quickActionScroll.maxValue)
         Text("Maintenance", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             MetricCard("Due soon", state.dueSoonCount.toString(), Modifier.weight(1f))
@@ -144,6 +166,32 @@ fun DashboardScreen(
             InfoCard("Unresolved issues", state.unresolvedProblems.joinToString("\n") { "• ${it.symptom} (${it.severity.lowercase()})" })
         }
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun HorizontalScrollIndicator(value: Int, maxValue: Int) {
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val thumbColor = MaterialTheme.colorScheme.primary
+    val percent = if (maxValue > 0) (value * 100 / maxValue) else 100
+    Canvas(
+        Modifier.fillMaxWidth().height(4.dp).semantics {
+            contentDescription = "Quick actions scroll indicator"
+            stateDescription = if (maxValue > 0) "$percent percent" else "All actions visible"
+        },
+    ) {
+        drawRoundRect(trackColor, cornerRadius = CornerRadius(size.height, size.height))
+        val contentWidth = size.width + maxValue
+        val thumbWidth = if (contentWidth > 0) {
+            (size.width * (size.width / contentWidth)).coerceIn(size.width * 0.2f, size.width)
+        } else size.width
+        val offset = if (maxValue > 0) (size.width - thumbWidth) * value / maxValue else 0f
+        drawRoundRect(
+            color = thumbColor,
+            topLeft = androidx.compose.ui.geometry.Offset(offset, 0f),
+            size = androidx.compose.ui.geometry.Size(thumbWidth, size.height),
+            cornerRadius = CornerRadius(size.height, size.height),
+        )
     }
 }
 
