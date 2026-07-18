@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +26,7 @@ class PreferencesRepository @Inject constructor(@ApplicationContext private val 
         val dateFormat = stringPreferencesKey("date_format")
         val defaultParkingCentavos = longPreferencesKey("default_parking_centavos")
         val defaultFuelPriceCentavos = longPreferencesKey("default_fuel_price_centavos")
+        val staleOdometerDays = intPreferencesKey("stale_odometer_days")
     }
 
     val selectedMotorcycleId: Flow<Long?> = context.dataStore.data.map { it[Keys.selectedMotorcycleId] }
@@ -35,6 +37,7 @@ class PreferencesRepository @Inject constructor(@ApplicationContext private val 
     val dateFormat: Flow<String> = context.dataStore.data.map { it[Keys.dateFormat] ?: "dd/MM/yyyy" }
     val defaultParkingCentavos: Flow<Long> = context.dataStore.data.map { it[Keys.defaultParkingCentavos] ?: 3_500L }
     val defaultFuelPriceCentavos: Flow<Long> = context.dataStore.data.map { it[Keys.defaultFuelPriceCentavos] ?: 7_000L }
+    val staleOdometerDays: Flow<Int> = context.dataStore.data.map { it[Keys.staleOdometerDays] ?: 14 }
 
     suspend fun selectMotorcycle(id: Long) {
         context.dataStore.edit { it[Keys.selectedMotorcycleId] = id }

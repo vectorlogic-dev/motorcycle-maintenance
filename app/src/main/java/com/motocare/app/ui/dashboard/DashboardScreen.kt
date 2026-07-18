@@ -42,6 +42,8 @@ import com.motocare.app.domain.model.MaintenanceStatus
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.asPeso
 import kotlin.math.max
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 @Composable
 fun DashboardScreen(
@@ -54,6 +56,7 @@ fun DashboardScreen(
     onAddParking: () -> Unit,
     onAddExpense: () -> Unit,
     onLoan: () -> Unit,
+    onIssues: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -77,6 +80,10 @@ fun DashboardScreen(
             }
         }
         Text("${selected.manufacturer} ${selected.model} ${selected.variant}", style = MaterialTheme.typography.titleMedium)
+        selected.purchaseDateEpochDay?.let {
+            val date = LocalDate.ofEpochDay(it)
+            Text("Purchased ${date.asDisplayDate()} • owned ${ChronoUnit.MONTHS.between(date, LocalDate.now()).coerceAtLeast(0)} months")
+        }
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
             Column(Modifier.padding(20.dp)) {
                 Text("CURRENT ODOMETER", style = MaterialTheme.typography.labelMedium)
@@ -93,7 +100,7 @@ fun DashboardScreen(
             QuickAction("Parking", Icons.Outlined.LocalParking, onAddParking)
             QuickAction("Expense", Icons.AutoMirrored.Outlined.ReceiptLong, onAddExpense)
             QuickAction("Loan", Icons.Outlined.Payments, onLoan)
-            QuickAction("Issue", Icons.Outlined.ReportProblem, {}, enabled = false)
+            QuickAction("Issue", Icons.Outlined.ReportProblem, onIssues)
         }
         Text("Maintenance", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -131,6 +138,11 @@ fun DashboardScreen(
                 } ?: ""),
         )
         state.fuel.averageKmPerLitre?.let { InfoCard("Fuel economy", "${"%.1f".format(it)} km/L average") }
+        state.registration?.expiryEpochDay?.let { InfoCard("Registration", "Expires ${LocalDate.ofEpochDay(it).asDisplayDate()}") }
+        state.insurance?.expiryEpochDay?.let { InfoCard("Insurance", "Expires ${LocalDate.ofEpochDay(it).asDisplayDate()}") }
+        if (state.unresolvedProblems.isNotEmpty()) {
+            InfoCard("Unresolved issues", state.unresolvedProblems.joinToString("\n") { "• ${it.symptom} (${it.severity.lowercase()})" })
+        }
         Spacer(Modifier.height(8.dp))
     }
 }

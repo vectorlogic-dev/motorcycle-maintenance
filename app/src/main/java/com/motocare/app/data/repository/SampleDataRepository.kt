@@ -23,6 +23,7 @@ class SampleDataRepository @Inject constructor(private val database: MotoCareDat
                 model = "Click125",
                 variant = "Smart Edition",
                 purchaseDateEpochDay = today.toEpochDay(),
+                purchaseType = "FINANCED",
                 initialOdometerKm = 1,
                 currentOdometerKm = 1,
                 registrationExpiryEpochDay = today.plusYears(3).toEpochDay(),

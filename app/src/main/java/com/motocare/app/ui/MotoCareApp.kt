@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.TwoWheeler
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -38,6 +39,12 @@ import com.motocare.app.ui.odometer.OdometerScreen
 import com.motocare.app.ui.onboarding.OnboardingScreen
 import com.motocare.app.ui.onboarding.OnboardingViewModel
 import com.motocare.app.ui.service.ServiceScreen
+import com.motocare.app.ui.records.RecordsHubScreen
+import com.motocare.app.ui.records.CoverageScreen
+import com.motocare.app.ui.records.DocumentsScreen
+import com.motocare.app.ui.problem.ProblemScreen
+import com.motocare.app.ui.backup.BackupScreen
+import com.motocare.app.ui.reports.ReportsScreen
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -55,6 +62,7 @@ private val destinations = listOf(
     Destination("dashboard", "Home", Icons.Outlined.Home),
     Destination("motorcycles", "Motorcycles", Icons.Outlined.TwoWheeler),
     Destination("maintenance", "Maintenance", Icons.Outlined.Build),
+    Destination("records", "Records", Icons.Outlined.Folder),
 )
 
 @Composable
@@ -121,6 +129,7 @@ private fun MainNavigation() {
                     onAddParking = { navController.navigate("parking") },
                     onAddExpense = { navController.navigate("expenses") },
                     onLoan = { navController.navigate("loan") },
+                    onIssues = { navController.navigate("problems") },
                 )
             }
             composable("motorcycles") { MotorcyclesScreen(contentPadding = padding) }
@@ -131,6 +140,21 @@ private fun MainNavigation() {
             composable("expenses") { ExpenseScreen(onBack = navController::popBackStack) }
             composable("parking") { ExpenseScreen(onBack = navController::popBackStack, startWithParking = true) }
             composable("loan") { LoanScreen(onBack = navController::popBackStack) }
+            composable("records") {
+                RecordsHubScreen(
+                    contentPadding = padding,
+                    onCoverage = { navController.navigate("coverage") },
+                    onDocuments = { navController.navigate("documents") },
+                    onProblems = { navController.navigate("problems") },
+                    onBackup = { navController.navigate("backup") },
+                    onReports = { navController.navigate("reports") },
+                )
+            }
+            composable("coverage") { CoverageScreen(onBack = navController::popBackStack) }
+            composable("documents") { DocumentsScreen(onBack = navController::popBackStack) }
+            composable("problems") { ProblemScreen(onBack = navController::popBackStack) }
+            composable("backup") { BackupScreen(onBack = navController::popBackStack) }
+            composable("reports") { ReportsScreen(onBack = navController::popBackStack) }
         }
     }
 }

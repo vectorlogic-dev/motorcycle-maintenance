@@ -16,8 +16,15 @@ MotoCare is an Android-first, offline motorcycle maintenance and ownership track
 - Fuel logs, monthly spending, and economy calculated only across valid full-tank intervals
 - Financing schedules with payment statuses, rebates, balances, due dates, and payoff estimates
 - Dashboard ownership totals, cost-per-kilometre figures, and active Phase 2 quick actions
+- Purchase date/type/price, seller, and second-hand ownership details
+- Coverage forecasting with upcoming services before the recorded limit
+- Registration, insurance, document references, and expiry reminders without legal conclusions
+- Problem and symptom tracking with resolution history and media URI references
+- Storage Access Framework JSON backup/restore and CSV exports without broad storage permissions
+- Accessible six-month cost and distance reports with native Compose charts
+- Room schema v2 with a tested, non-destructive `1 → 2` migration
 
-Coverage details, registration and insurance records, problem logs, backup/export, reports, and settings UI remain in Phases 3–4. Disabled dashboard actions intentionally mark those boundaries.
+Settings UI, broader instrumentation coverage, final accessibility polish, and release documentation remain in Phase 4.
 
 ## Build
 

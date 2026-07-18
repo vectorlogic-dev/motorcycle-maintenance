@@ -10,6 +10,7 @@ import com.motocare.app.data.local.dao.MotorcycleDao
 import com.motocare.app.data.local.dao.OdometerDao
 import com.motocare.app.data.local.dao.PhaseTwoDao
 import com.motocare.app.data.local.dao.ServiceDao
+import com.motocare.app.data.local.dao.PhaseThreeDao
 import com.motocare.app.data.local.entity.AttachmentReferenceEntity
 import com.motocare.app.data.local.entity.CoveragePlanEntity
 import com.motocare.app.data.local.entity.ExpenseEntity
@@ -42,7 +43,7 @@ import com.motocare.app.data.local.entity.ServiceRecordItemEntity
         CoveragePlanEntity::class,
         AttachmentReferenceEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class MotoCareDatabase : RoomDatabase() {
@@ -54,4 +55,5 @@ abstract class MotoCareDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
     abstract fun fuelDao(): FuelDao
     abstract fun loanDao(): LoanDao
+    abstract fun phaseThreeDao(): PhaseThreeDao
 }

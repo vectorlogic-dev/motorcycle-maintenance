@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -46,6 +47,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.data.local.entity.MotorcycleEntity
 import java.time.LocalDate
+import com.motocare.app.util.asDisplayDate
+import com.motocare.app.util.toCentavosOrNull
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +77,7 @@ fun MotorcyclesScreen(contentPadding: PaddingValues, viewModel: MotorcyclesViewM
                                 Text(bike.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                                 Text(listOf(bike.manufacturer, bike.model, bike.variant).filter { it.isNotBlank() }.joinToString(" "))
                                 Text("${"%,d".format(bike.currentOdometerKm)} km", color = MaterialTheme.colorScheme.primary)
+                                bike.purchaseDateEpochDay?.let { Text("Purchased ${LocalDate.ofEpochDay(it).asDisplayDate()}", style = MaterialTheme.typography.bodySmall) }
                             }
                             IconButton(onClick = { archiveTarget = bike }) { Icon(Icons.Outlined.Archive, "Archive ${bike.name}") }
                         }
@@ -108,6 +112,10 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
     var variant by remember(existing) { mutableStateOf(existing?.variant.orEmpty()) }
     var year by remember(existing) { mutableStateOf(existing?.year?.toString().orEmpty()) }
     var purchaseDate by remember(existing) { mutableStateOf(existing?.purchaseDateEpochDay?.let { LocalDate.ofEpochDay(it).toString() }.orEmpty()) }
+    var purchaseType by remember(existing) { mutableStateOf(existing?.purchaseType ?: "UNKNOWN") }
+    var purchasePrice by remember(existing) { mutableStateOf(existing?.purchasePriceCentavos?.let { "%.2f".format(it / 100.0) }.orEmpty()) }
+    var seller by remember(existing) { mutableStateOf(existing?.seller.orEmpty()) }
+    var secondHand by remember(existing) { mutableStateOf(existing?.secondHand ?: false) }
     var initialKm by remember(existing) { mutableStateOf(existing?.initialOdometerKm?.toString() ?: "1") }
     var plate by remember(existing) { mutableStateOf(existing?.plateNumber.orEmpty()) }
     var engine by remember(existing) { mutableStateOf(existing?.engineNumber.orEmpty()) }
@@ -139,6 +147,15 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
                 Field(variant, { variant = it }, "Variant")
                 Field(year, { year = it.filter(Char::isDigit) }, "Year")
                 Field(purchaseDate, { purchaseDate = it }, "Purchase date (YYYY-MM-DD)")
+                Text("Purchase type")
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("CASH", "FINANCED").forEach { type ->
+                        AssistChip(onClick = { purchaseType = type; financed = type == "FINANCED" }, label = { Text(if (purchaseType == type) "✓ ${type.lowercase()}" else type.lowercase()) })
+                    }
+                }
+                Field(purchasePrice, { purchasePrice = it.filter { c -> c.isDigit() || c == '.' } }, "Purchase price (PHP)")
+                Field(seller, { seller = it }, "Dealer or seller")
+                Row { Checkbox(secondHand, { secondHand = it }); Text("Bought second-hand", Modifier.padding(top = 12.dp)) }
                 if (existing == null) Field(initialKm, { initialKm = it.filter(Char::isDigit) }, "Initial odometer (km)")
                 Field(plate, { plate = it }, "Plate number")
                 Field(registration, { registration = it }, "Registration expiry (YYYY-MM-DD)")
@@ -165,6 +182,7 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
                     onSave(base.copy(
                         name = name.trim(), manufacturer = maker.trim(), model = model.trim(), variant = variant.trim(),
                         year = year.toIntOrNull(), purchaseDateEpochDay = epochOrNull(purchaseDate),
+                        purchaseType = purchaseType, purchasePriceCentavos = purchasePrice.toCentavosOrNull(), seller = seller.trim(), secondHand = secondHand,
                         initialOdometerKm = if (existing == null) initialKm.toLong() else base.initialOdometerKm,
                         plateNumber = plate.trim(), engineNumber = engine.trim(), chassisNumber = chassis.trim(),
                         registrationExpiryEpochDay = epochOrNull(registration), insuranceExpiryEpochDay = epochOrNull(insurance),

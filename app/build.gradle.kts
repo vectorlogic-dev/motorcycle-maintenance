@@ -31,6 +31,8 @@ android {
     kotlinOptions { jvmTarget = "17" }
 
     packaging.resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+
+    sourceSets["androidTest"].assets.srcDir("$projectDir/schemas")
 }
 
 kapt {
@@ -72,6 +74,7 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    androidTestImplementation("androidx.room:room-testing:2.7.2")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

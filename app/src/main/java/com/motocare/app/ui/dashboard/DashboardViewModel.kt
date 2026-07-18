@@ -6,12 +6,14 @@ import com.motocare.app.data.local.dao.PhaseTwoDao
 import com.motocare.app.data.local.entity.MaintenanceScheduleEntity
 import com.motocare.app.data.local.entity.MotorcycleEntity
 import com.motocare.app.data.repository.ExpenseRepository
+import com.motocare.app.data.repository.ComplianceRepository
 import com.motocare.app.data.repository.FuelRepository
 import com.motocare.app.data.repository.LoanRepository
 import com.motocare.app.data.repository.MaintenanceRepository
 import com.motocare.app.data.repository.MotorcycleRepository
 import com.motocare.app.data.repository.OdometerRepository
 import com.motocare.app.data.repository.PreferencesRepository
+import com.motocare.app.data.repository.ProblemRepository
 import com.motocare.app.data.repository.ServiceRepository
 import com.motocare.app.domain.model.CostSummary
 import com.motocare.app.domain.model.CoverageAssessment
@@ -20,6 +22,9 @@ import com.motocare.app.domain.model.LoanSummary
 import com.motocare.app.domain.model.MaintenanceAssessment
 import com.motocare.app.domain.model.MaintenanceStatus
 import com.motocare.app.domain.model.OdometerStats
+import com.motocare.app.data.local.entity.ProblemLogEntity
+import com.motocare.app.data.local.entity.RegistrationRecordEntity
+import com.motocare.app.data.local.entity.InsuranceRecordEntity
 import com.motocare.app.domain.usecase.CostSummaryCalculator
 import com.motocare.app.domain.usecase.CoverageCalculator
 import com.motocare.app.domain.usecase.FuelEconomyCalculator
@@ -51,6 +56,9 @@ data class DashboardUiState(
     val fuel: FuelSummary = FuelSummary(),
     val monthFuelCentavos: Long = 0,
     val monthParkingCentavos: Long = 0,
+    val registration: RegistrationRecordEntity? = null,
+    val insurance: InsuranceRecordEntity? = null,
+    val unresolvedProblems: List<ProblemLogEntity> = emptyList(),
 ) {
     val dueSoonCount: Int get() = schedules.count { it.assessment.status == MaintenanceStatus.DUE_SOON }
     val overdueCount: Int get() = schedules.count { it.assessment.status == MaintenanceStatus.OVERDUE }
@@ -68,6 +76,8 @@ class DashboardViewModel @Inject constructor(
     expensesRepository: ExpenseRepository,
     fuelRepository: FuelRepository,
     serviceRepository: ServiceRepository,
+    complianceRepository: ComplianceRepository,
+    problemRepository: ProblemRepository,
     loanRepository: LoanRepository,
     private val preferences: PreferencesRepository,
     phaseTwoDao: PhaseTwoDao,
@@ -90,6 +100,9 @@ class DashboardViewModel @Inject constructor(
     private val expenses = selectedId.flatMapLatest { id -> id?.let(expensesRepository::observe) ?: flowOf(emptyList()) }
     private val fuelEntries = selectedId.flatMapLatest { id -> id?.let(fuelRepository::observe) ?: flowOf(emptyList()) }
     private val services = selectedId.flatMapLatest { id -> id?.let(serviceRepository::observe) ?: flowOf(emptyList()) }
+    private val registration = selectedId.flatMapLatest { id -> id?.let(complianceRepository::observeRegistration) ?: flowOf(null) }
+    private val insurance = selectedId.flatMapLatest { id -> id?.let(complianceRepository::observeInsurance) ?: flowOf(null) }
+    private val problems = selectedId.flatMapLatest { id -> id?.let(problemRepository::observe) ?: flowOf(emptyList()) }
 
     private val base = combine(selection, schedules, readings) { (bikes, selected), plans, entries ->
         val stats = odometerCalculator.stats(entries)
@@ -106,10 +119,12 @@ class DashboardViewModel @Inject constructor(
     }
     private val ownershipActivity = combine(expenses, fuelEntries, services) { costs, fills, history -> Triple(costs, fills, history) }
     private val finance = combine(loan, payments) { agreement, installments -> agreement to installments }
+    private val phaseThree = combine(registration, insurance, problems) { registrationRecord, insuranceRecord, issues -> Triple(registrationRecord, insuranceRecord, issues) }
 
-    val uiState = combine(base, coverage, ownershipActivity, finance) { (state, selected, stats), plan, activity, financeData ->
+    val uiState = combine(base, coverage, ownershipActivity, finance, phaseThree) { (state, selected, stats), plan, activity, financeData, records ->
         val (costs, fills, history) = activity
         val (agreement, installments) = financeData
+        val (registrationRecord, insuranceRecord, issues) = records
         val loanSummary = agreement?.let { loanCalculator.calculate(it, installments) }
         val month = YearMonth.now()
         val today = LocalDate.now()
@@ -133,6 +148,9 @@ class DashboardViewModel @Inject constructor(
             fuel = fuelCalculator.calculate(fills),
             monthFuelCentavos = fills.filter { YearMonth.from(LocalDate.ofEpochDay(it.dateEpochDay)) == month }.sumOf { it.totalCostCentavos },
             monthParkingCentavos = costs.filter { it.category == "PARKING" && YearMonth.from(LocalDate.ofEpochDay(it.dateEpochDay)) == month }.sumOf { it.amountCentavos },
+            registration = registrationRecord ?: selected?.registrationExpiryEpochDay?.let { RegistrationRecordEntity(motorcycleId = selected.id, expiryEpochDay = it, plateNumber = selected.plateNumber) },
+            insurance = insuranceRecord ?: selected?.insuranceExpiryEpochDay?.let { InsuranceRecordEntity(motorcycleId = selected.id, expiryEpochDay = it) },
+            unresolvedProblems = issues.filterNot { it.resolved },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
 

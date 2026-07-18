@@ -12,6 +12,9 @@ import com.motocare.app.data.local.entity.ExpenseEntity
 import com.motocare.app.data.local.entity.FuelEntryEntity
 import com.motocare.app.data.local.entity.LoanEntity
 import com.motocare.app.data.local.entity.LoanPaymentEntity
+import com.motocare.app.data.local.entity.InsuranceRecordEntity
+import com.motocare.app.data.local.entity.ProblemLogEntity
+import com.motocare.app.data.local.entity.RegistrationRecordEntity
 import com.motocare.app.data.local.entity.MaintenanceScheduleEntity
 import com.motocare.app.data.local.entity.MotorcycleEntity
 import com.motocare.app.data.local.entity.OdometerEntryEntity
@@ -132,6 +135,9 @@ interface FuelDao {
 
 @Dao
 interface LoanDao {
+    @Query("SELECT * FROM loans")
+    suspend fun getAllLoans(): List<LoanEntity>
+
     @Query("SELECT * FROM loans WHERE motorcycleId = :motorcycleId LIMIT 1")
     fun observeForMotorcycle(motorcycleId: Long): Flow<LoanEntity?>
 
@@ -155,4 +161,58 @@ interface LoanDao {
 
     @Update
     suspend fun updatePayment(payment: LoanPaymentEntity)
+}
+
+@Dao
+interface PhaseThreeDao {
+    @Query("SELECT * FROM coverage_plans WHERE motorcycleId = :motorcycleId ORDER BY id DESC LIMIT 1")
+    fun observeCoverage(motorcycleId: Long): Flow<CoveragePlanEntity?>
+
+    @Query("SELECT * FROM coverage_plans")
+    suspend fun getAllCoverage(): List<CoveragePlanEntity>
+
+    @Insert
+    suspend fun insertCoverage(plan: CoveragePlanEntity): Long
+
+    @Update
+    suspend fun updateCoverage(plan: CoveragePlanEntity)
+
+    @Query("SELECT * FROM registration_records WHERE motorcycleId = :motorcycleId ORDER BY id DESC LIMIT 1")
+    fun observeRegistration(motorcycleId: Long): Flow<RegistrationRecordEntity?>
+
+    @Query("SELECT * FROM registration_records")
+    suspend fun getAllRegistrations(): List<RegistrationRecordEntity>
+
+    @Insert
+    suspend fun insertRegistration(record: RegistrationRecordEntity): Long
+
+    @Update
+    suspend fun updateRegistration(record: RegistrationRecordEntity)
+
+    @Query("SELECT * FROM insurance_records WHERE motorcycleId = :motorcycleId ORDER BY id DESC LIMIT 1")
+    fun observeInsurance(motorcycleId: Long): Flow<InsuranceRecordEntity?>
+
+    @Query("SELECT * FROM insurance_records")
+    suspend fun getAllInsurance(): List<InsuranceRecordEntity>
+
+    @Insert
+    suspend fun insertInsurance(record: InsuranceRecordEntity): Long
+
+    @Update
+    suspend fun updateInsurance(record: InsuranceRecordEntity)
+
+    @Query("SELECT * FROM problem_logs WHERE motorcycleId = :motorcycleId ORDER BY resolved, dateEpochDay DESC, id DESC")
+    fun observeProblems(motorcycleId: Long): Flow<List<ProblemLogEntity>>
+
+    @Query("SELECT * FROM problem_logs WHERE resolved = 0")
+    suspend fun getAllUnresolvedProblems(): List<ProblemLogEntity>
+
+    @Insert
+    suspend fun insertProblem(problem: ProblemLogEntity): Long
+
+    @Update
+    suspend fun updateProblem(problem: ProblemLogEntity)
+
+    @Insert
+    suspend fun insertAttachment(attachment: AttachmentReferenceEntity): Long
 }
