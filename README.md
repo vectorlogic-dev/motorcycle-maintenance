@@ -47,4 +47,4 @@ Release optimization is always enabled. To sign the bundle, provide the four `MO
 
 Maintenance intervals in sample data are deliberately blank editable templates. Users must confirm intervals against the motorcycle owner’s manual or dealer booklet.
 
-See [PRIVACY.md](PRIVACY.md) for local data handling and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) for release preparation.
+See [PRIVACY.md](PRIVACY.md) for local data handling, [docs/PRODUCTION_AUDIT.md](docs/PRODUCTION_AUDIT.md) for the verified release-candidate status, and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) for release-owner preparation.
