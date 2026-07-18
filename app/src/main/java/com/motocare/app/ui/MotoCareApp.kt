@@ -10,6 +10,7 @@ import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.TwoWheeler
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -45,6 +46,9 @@ import com.motocare.app.ui.records.DocumentsScreen
 import com.motocare.app.ui.problem.ProblemScreen
 import com.motocare.app.ui.backup.BackupScreen
 import com.motocare.app.ui.reports.ReportsScreen
+import com.motocare.app.ui.settings.SettingsScreen
+import com.motocare.app.ui.theme.MotoCareTheme
+import com.motocare.app.util.DisplayFormats
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -55,6 +59,10 @@ import androidx.lifecycle.viewModelScope
 @HiltViewModel
 class AppViewModel @Inject constructor(preferences: PreferencesRepository) : ViewModel() {
     val onboardingComplete = preferences.onboardingComplete.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val theme = preferences.theme.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "SYSTEM")
+    val currency = preferences.currency.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "PHP")
+    val dateFormat = preferences.dateFormat.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "dd/MM/yyyy")
+    val notificationsEnabled = preferences.notificationsEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 }
 
 private data class Destination(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
@@ -63,17 +71,25 @@ private val destinations = listOf(
     Destination("motorcycles", "Motorcycles", Icons.Outlined.TwoWheeler),
     Destination("maintenance", "Maintenance", Icons.Outlined.Build),
     Destination("records", "Records", Icons.Outlined.Folder),
+    Destination("settings", "Settings", Icons.Outlined.Settings),
 )
 
 @Composable
 fun MotoCareApp(appViewModel: AppViewModel = hiltViewModel()) {
     val onboarded by appViewModel.onboardingComplete.collectAsStateWithLifecycle()
-    when (onboarded) {
-        null -> Unit
-        false -> OnboardingScreen(hiltViewModel<OnboardingViewModel>())
-        true -> {
-            MainNavigation()
-            NotificationPermissionEffect()
+    val theme by appViewModel.theme.collectAsStateWithLifecycle()
+    val currency by appViewModel.currency.collectAsStateWithLifecycle()
+    val dateFormat by appViewModel.dateFormat.collectAsStateWithLifecycle()
+    val notificationsEnabled by appViewModel.notificationsEnabled.collectAsStateWithLifecycle()
+    DisplayFormats.configure(currency, dateFormat)
+    MotoCareTheme(theme) {
+        when (onboarded) {
+            null -> Unit
+            false -> OnboardingScreen(hiltViewModel<OnboardingViewModel>())
+            true -> {
+                MainNavigation()
+                if (notificationsEnabled) NotificationPermissionEffect()
+            }
         }
     }
 }
@@ -150,6 +166,7 @@ private fun MainNavigation() {
                     onReports = { navController.navigate("reports") },
                 )
             }
+            composable("settings") { SettingsScreen(contentPadding = padding, onBackup = { navController.navigate("backup") }) }
             composable("coverage") { CoverageScreen(onBack = navController::popBackStack) }
             composable("documents") { DocumentsScreen(onBack = navController::popBackStack) }
             composable("problems") { ProblemScreen(onBack = navController::popBackStack) }

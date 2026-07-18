@@ -49,9 +49,11 @@ class ReminderWorker @AssistedInject constructor(
         if (android.os.Build.VERSION.SDK_INT >= 33 &&
             applicationContext.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return@runCatching Result.success()
+        val disabledMotorcycleIds = preferences.notificationDisabledMotorcycleIds.first()
 
         maintenance.getAllActive().forEach { schedule ->
             val bike = motorcycles.get(schedule.motorcycleId) ?: return@forEach
+            if (bike.id in disabledMotorcycleIds) return@forEach
             val assessment = calculator.assess(schedule, bike.currentOdometerKm)
             if (assessment.status == MaintenanceStatus.DUE_SOON || assessment.status == MaintenanceStatus.DUE || assessment.status == MaintenanceStatus.OVERDUE) {
                 notify(
@@ -62,22 +64,22 @@ class ReminderWorker @AssistedInject constructor(
             }
         }
         val today = LocalDate.now()
-        val activeBikes = motorcycles.activeMotorcycles.first()
+        val activeBikes = motorcycles.activeMotorcycles.first().filterNot { it.id in disabledMotorcycleIds }
         val registrations = phaseThreeDao.getAllRegistrations()
-        registrations.forEach { record ->
+        registrations.filterNot { it.motorcycleId in disabledMotorcycleIds }.forEach { record ->
             record.expiryEpochDay?.let { notifyDate(record.motorcycleId, 100_000, "Registration", it, today) }
         }
         activeBikes.filter { bike -> registrations.none { it.motorcycleId == bike.id } }.forEach { bike ->
             bike.registrationExpiryEpochDay?.let { notifyDate(bike.id, 100_000, "Registration", it, today) }
         }
         val insuranceRecords = phaseThreeDao.getAllInsurance()
-        insuranceRecords.forEach { record ->
+        insuranceRecords.filterNot { it.motorcycleId in disabledMotorcycleIds }.forEach { record ->
             record.expiryEpochDay?.let { notifyDate(record.motorcycleId, 200_000, "Insurance", it, today) }
         }
         activeBikes.filter { bike -> insuranceRecords.none { it.motorcycleId == bike.id } }.forEach { bike ->
             bike.insuranceExpiryEpochDay?.let { notifyDate(bike.id, 200_000, "Insurance", it, today) }
         }
-        phaseThreeDao.getAllCoverage().forEach { plan ->
+        phaseThreeDao.getAllCoverage().filterNot { it.motorcycleId in disabledMotorcycleIds }.forEach { plan ->
             val bike = motorcycles.get(plan.motorcycleId) ?: return@forEach
             val start = LocalDate.ofEpochDay(plan.startEpochDay)
             val days = ChronoUnit.DAYS.between(start, today).coerceAtLeast(1)
@@ -87,11 +89,14 @@ class ReminderWorker @AssistedInject constructor(
                 notify(300_000 + plan.id.toInt(), "Maintenance coverage ending", "${bike.name} • ${assessment.remainingDays} days or ${assessment.remainingKm} km remaining")
             }
         }
-        loanDao.getAllLoans().forEach { loan ->
+        loanDao.getAllLoans().filterNot { it.motorcycleId in disabledMotorcycleIds }.forEach { loan ->
             val next = loanDao.getPayments(loan.id).filter { it.status == "PENDING" || it.status == "MISSED" }.minByOrNull { it.dueEpochDay }
             if (next != null) {
                 val days = ChronoUnit.DAYS.between(today, LocalDate.ofEpochDay(next.dueEpochDay))
-                if (days <= 3) motorcycles.get(loan.motorcycleId)?.let { bike -> notify(400_000 + loan.id.toInt(), "Loan payment due", "${bike.name} • payment ${next.installmentNumber} is due in $days days") }
+                if (days <= 3) motorcycles.get(loan.motorcycleId)?.let { bike ->
+                    val timing = if (days < 0) "${-days} days overdue" else if (days == 0L) "due today" else "due in $days days"
+                    notify(400_000 + loan.id.toInt(), "Loan payment due", "${bike.name} • payment ${next.installmentNumber} is $timing")
+                }
             }
         }
         val staleDays = preferences.staleOdometerDays.first()

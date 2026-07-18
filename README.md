@@ -23,8 +23,11 @@ MotoCare is an Android-first, offline motorcycle maintenance and ownership track
 - Storage Access Framework JSON backup/restore and CSV exports without broad storage permissions
 - Accessible six-month cost and distance reports with native Compose charts
 - Room schema v2 with a tested, non-destructive `1 → 2` migration
+- Settings for theme, date format, currency display, notification preferences, per-motorcycle reminder opt-outs, and quick-entry defaults
+- Repository, migration, and critical-screen instrumentation coverage
+- Offline privacy documentation and a Play Store release checklist
 
-Settings UI, broader instrumentation coverage, final accessibility polish, and release documentation remain in Phase 4.
+Phases 1–4 of the initial MotoCare brief are implemented. The project is an unsigned preview build; final adaptive artwork, store assets, release signing, and physical-device accessibility checks remain release-owner tasks.
 
 ## Build
 
@@ -34,6 +37,10 @@ Android Studio’s bundled JDK 17 and Android SDK 36 are supported.
 export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 ./gradlew testDebugUnitTest
 ./gradlew assembleDebug
+./gradlew connectedDebugAndroidTest
+./gradlew lintDebug
 ```
 
 Maintenance intervals in sample data are deliberately blank editable templates. Users must confirm intervals against the motorcycle owner’s manual or dealer booklet.
+
+See [PRIVACY.md](PRIVACY.md) for local data handling and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) for release preparation.

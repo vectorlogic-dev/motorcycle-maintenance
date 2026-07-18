@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class BackupUiState(val working: Boolean = false, val message: String? = null)
+data class BackupUiState(val working: Boolean = false, val message: String? = null, val isError: Boolean = false)
 
 @HiltViewModel
 class BackupViewModel @Inject constructor(private val repository: BackupRepository) : ViewModel() {
@@ -24,6 +24,6 @@ class BackupViewModel @Inject constructor(private val repository: BackupReposito
     private fun runOperation(success: String, block: suspend () -> Unit) = viewModelScope.launch {
         mutableState.value = BackupUiState(working = true)
         mutableState.value = runCatching { block(); BackupUiState(message = success) }
-            .getOrElse { BackupUiState(message = it.message ?: "Operation failed") }
+            .getOrElse { BackupUiState(message = it.message ?: "Operation failed", isError = true) }
     }
 }

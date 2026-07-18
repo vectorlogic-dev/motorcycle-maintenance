@@ -29,6 +29,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.LocalDate
@@ -56,8 +59,14 @@ fun BackupScreen(onBack: () -> Unit, viewModel: BackupViewModel = hiltViewModel(
             ExportButton("Fuel") { fuelCsv.launch("motocare-fuel-$suffix.csv") }
             ExportButton("Service history") { serviceCsv.launch("motocare-services-$suffix.csv") }
             ExportButton("Odometer readings") { odometerCsv.launch("motocare-odometer-$suffix.csv") }
-            if (state.working) CircularProgressIndicator()
-            state.message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+            if (state.working) CircularProgressIndicator(modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+            state.message?.let {
+                Text(
+                    it,
+                    color = if (state.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.semantics { liveRegion = if (state.isError) LiveRegionMode.Assertive else LiveRegionMode.Polite },
+                )
+            }
         }
     }
     if (confirmRestore) AlertDialog(

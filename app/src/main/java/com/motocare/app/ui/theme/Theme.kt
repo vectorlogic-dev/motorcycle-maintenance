@@ -30,9 +30,13 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-fun MotoCareTheme(content: @Composable () -> Unit) {
+fun MotoCareTheme(themeMode: String = "SYSTEM", content: @Composable () -> Unit) {
     val context = LocalContext.current
-    val dark = isSystemInDarkTheme()
+    val dark = when (themeMode) {
+        "LIGHT" -> false
+        "DARK" -> true
+        else -> isSystemInDarkTheme()
+    }
     val colors = if (Build.VERSION.SDK_INT >= 31) {
         if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     } else if (dark) DarkColors else LightColors
