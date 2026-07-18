@@ -5,11 +5,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import com.motocare.app.ui.records.RecordsHubScreen
 import com.motocare.app.ui.settings.SettingsActions
 import com.motocare.app.ui.settings.SettingsContent
 import com.motocare.app.ui.settings.SettingsUiState
+import com.motocare.app.ui.components.MotoCareDateField
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -56,5 +59,21 @@ class CriticalScreensTest {
         compose.onNodeWithText("Settings").assertIsDisplayed()
         compose.onNodeWithText("Dark").performClick()
         assertEquals("DARK", theme)
+    }
+
+    @Test
+    fun dateField_opensCalendarPicker() {
+        compose.setContent {
+            MaterialTheme {
+                MotoCareDateField(
+                    date = LocalDate.of(2026, 7, 16),
+                    onDateSelected = {},
+                    label = "Reading date",
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Reading date, 16/07/2026. Choose date").performClick()
+        compose.onNodeWithText("OK").assertIsDisplayed()
     }
 }

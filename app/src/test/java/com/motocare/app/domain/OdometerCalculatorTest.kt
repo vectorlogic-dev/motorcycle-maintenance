@@ -29,4 +29,24 @@ class OdometerCalculatorTest {
         assertEquals(20.0, stats.averageKmPerDay, 0.001)
         assertTrue(stats.travelledByMonth["2026-07"] == 180L)
     }
+
+    @Test fun `first saved reading uses motorcycle initial reading and purchase date`() {
+        val zone = ZoneId.of("UTC")
+        val reading = OdometerEntryEntity(
+            motorcycleId = 1,
+            readingKm = 31,
+            recordedAtEpochMillis = LocalDate.of(2026, 7, 19).atStartOfDay(zone).toInstant().toEpochMilli(),
+        )
+
+        val stats = calculator.stats(
+            entries = listOf(reading),
+            zoneId = zone,
+            initialReadingKm = 1,
+            initialDate = LocalDate.of(2026, 7, 16),
+        )
+
+        assertEquals(30L, stats.travelledKm)
+        assertEquals(10.0, stats.averageKmPerDay, 0.001)
+        assertEquals(304.375, stats.averageKmPerMonth, 0.001)
+    }
 }

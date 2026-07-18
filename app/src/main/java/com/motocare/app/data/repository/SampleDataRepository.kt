@@ -15,18 +15,18 @@ import javax.inject.Singleton
 
 @Singleton
 class SampleDataRepository @Inject constructor(private val database: MotoCareDatabase) {
-    suspend fun createHondaClickSample(today: LocalDate = LocalDate.now()): Long = database.withTransaction {
+    suspend fun createHondaClickSample(startDate: LocalDate = LocalDate.of(2026, 7, 16)): Long = database.withTransaction {
         val id = database.motorcycleDao().insert(
             MotorcycleEntity(
                 name = "My Click125",
                 manufacturer = "Honda",
                 model = "Click125",
                 variant = "Smart Edition",
-                purchaseDateEpochDay = today.toEpochDay(),
+                purchaseDateEpochDay = startDate.toEpochDay(),
                 purchaseType = "FINANCED",
                 initialOdometerKm = 1,
                 currentOdometerKm = 1,
-                registrationExpiryEpochDay = today.plusYears(3).toEpochDay(),
+                registrationExpiryEpochDay = startDate.plusYears(3).toEpochDay(),
                 isFinanced = true,
                 notes = "Sample profile — review dates and identifiers before relying on reminders.",
             ),
@@ -35,7 +35,7 @@ class SampleDataRepository @Inject constructor(private val database: MotoCareDat
             OdometerEntryEntity(
                 motorcycleId = id,
                 readingKm = 1,
-                recordedAtEpochMillis = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                recordedAtEpochMillis = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
                 note = "Starting odometer",
             ),
         )
@@ -63,7 +63,7 @@ class SampleDataRepository @Inject constructor(private val database: MotoCareDat
                 termMonths = 12,
                 rebateCentavos = 20_000,
                 rebateCondition = "PHP 200 rebate when paid on time; effective on-time payment PHP 8,200",
-                startEpochDay = today.toEpochDay(),
+                startEpochDay = startDate.toEpochDay(),
             ),
         )
         database.loanDao().insertPayments(
@@ -71,15 +71,15 @@ class SampleDataRepository @Inject constructor(private val database: MotoCareDat
                 LoanPaymentEntity(
                     loanId = loanId,
                     installmentNumber = number,
-                    dueEpochDay = today.plusMonths(number.toLong()).toEpochDay(),
+                    dueEpochDay = startDate.plusMonths(number.toLong()).toEpochDay(),
                 )
             },
         )
         database.phaseTwoDao().insertCoverage(
             CoveragePlanEntity(
                 motorcycleId = id,
-                startEpochDay = today.toEpochDay(),
-                endEpochDay = today.plusYears(1).toEpochDay(),
+                startEpochDay = startDate.toEpochDay(),
+                endEpochDay = startDate.plusYears(1).toEpochDay(),
                 startOdometerKm = 1,
                 limitOdometerKm = 12_000,
                 coveredServices = "Confirm covered services with the dealer booklet.",

@@ -105,7 +105,11 @@ class DashboardViewModel @Inject constructor(
     private val problems = selectedId.flatMapLatest { id -> id?.let(problemRepository::observe) ?: flowOf(emptyList()) }
 
     private val base = combine(selection, schedules, readings) { (bikes, selected), plans, entries ->
-        val stats = odometerCalculator.stats(entries)
+        val stats = odometerCalculator.stats(
+            entries = entries,
+            initialReadingKm = selected?.initialOdometerKm,
+            initialDate = selected?.purchaseDateEpochDay?.let(LocalDate::ofEpochDay),
+        )
         Triple(
             DashboardUiState(
                 motorcycles = bikes,

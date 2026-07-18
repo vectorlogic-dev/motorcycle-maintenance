@@ -18,15 +18,33 @@ class OdometerCalculator @Inject constructor() {
         else -> OdometerValidation.Valid
     }
 
-    fun stats(entries: List<OdometerEntryEntity>, zoneId: ZoneId = ZoneId.systemDefault()): OdometerStats {
-        if (entries.size < 2) return OdometerStats()
-        val sorted = entries.sortedBy { it.recordedAtEpochMillis }
+    fun stats(
+        entries: List<OdometerEntryEntity>,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+        initialReadingKm: Long? = null,
+        initialDate: java.time.LocalDate? = null,
+    ): OdometerStats {
+        val points = entries.map {
+            ReadingPoint(
+                readingKm = it.readingKm,
+                date = Instant.ofEpochMilli(it.recordedAtEpochMillis).atZone(zoneId).toLocalDate(),
+                order = it.recordedAtEpochMillis,
+            )
+        }.toMutableList()
+        if (initialReadingKm != null && initialDate != null &&
+            points.none { it.readingKm == initialReadingKm && it.date == initialDate } &&
+            (points.minOfOrNull { it.date } == null || initialDate <= points.minOf { it.date })
+        ) {
+            points += ReadingPoint(initialReadingKm, initialDate, Long.MIN_VALUE)
+        }
+        if (points.size < 2) return OdometerStats()
+        val sorted = points.sortedWith(compareBy<ReadingPoint> { it.date }.thenBy { it.order })
         val travelled = max(0, sorted.last().readingKm - sorted.first().readingKm)
-        val firstDate = Instant.ofEpochMilli(sorted.first().recordedAtEpochMillis).atZone(zoneId).toLocalDate()
-        val lastDate = Instant.ofEpochMilli(sorted.last().recordedAtEpochMillis).atZone(zoneId).toLocalDate()
+        val firstDate = sorted.first().date
+        val lastDate = sorted.last().date
         val days = max(1, ChronoUnit.DAYS.between(firstDate, lastDate).toInt())
         val monthly = sorted.zipWithNext().groupBy { pair ->
-            YearMonth.from(Instant.ofEpochMilli(pair.second.recordedAtEpochMillis).atZone(zoneId))
+            YearMonth.from(pair.second.date)
         }.mapValues { (_, pairs) -> pairs.sumOf { max(0, it.second.readingKm - it.first.readingKm) } }
             .mapKeys { it.key.toString() }
         return OdometerStats(
@@ -36,4 +54,6 @@ class OdometerCalculator @Inject constructor() {
             travelledByMonth = monthly,
         )
     }
+
+    private data class ReadingPoint(val readingKm: Long, val date: java.time.LocalDate, val order: Long)
 }

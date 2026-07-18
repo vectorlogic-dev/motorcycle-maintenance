@@ -50,7 +50,17 @@ class OdometerViewModel @Inject constructor(
     private var pending: PendingReading? = null
 
     val uiState = combine(selected, entries, correction, error) { bike, readings, correctionKm, message ->
-        OdometerUiState(bike, readings, calculator.stats(readings), correctionKm, message)
+        OdometerUiState(
+            motorcycle = bike,
+            entries = readings,
+            stats = calculator.stats(
+                entries = readings,
+                initialReadingKm = bike?.initialOdometerKm,
+                initialDate = bike?.purchaseDateEpochDay?.let(LocalDate::ofEpochDay),
+            ),
+            correctionPreviousKm = correctionKm,
+            error = message,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OdometerUiState())
 
     fun add(kmText: String, dateText: String, note: String, correctionConfirmed: Boolean = false, onSaved: () -> Unit = {}) {
@@ -87,5 +97,11 @@ class OdometerViewModel @Inject constructor(
     fun cancelCorrection() {
         pending = null
         correction.value = null
+    }
+
+    fun delete(entry: OdometerEntryEntity) = viewModelScope.launch {
+        runCatching { repository.deleteReading(entry) }
+            .onSuccess { error.value = null }
+            .onFailure { error.value = it.message ?: "Could not delete this reading." }
     }
 }

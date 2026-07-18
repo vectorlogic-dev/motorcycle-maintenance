@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -36,17 +37,20 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.ui.components.MotoCareEmptyState
+import com.motocare.app.ui.components.MotoCareDateField
 import com.motocare.app.ui.components.MotoCareSummaryCard
+import com.motocare.app.data.local.entity.OdometerEntryEntity
+import com.motocare.app.util.asDisplayDate
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OdometerScreen(onBack: () -> Unit, viewModel: OdometerViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
+    var deleteTarget by remember { mutableStateOf<OdometerEntryEntity?>(null) }
     Scaffold(
         topBar = { TopAppBar(title = { Text("Odometer") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) },
         floatingActionButton = { if (state.motorcycle != null) FloatingActionButton({ showAdd = true }) { Icon(Icons.Outlined.Add, "Add reading") } },
@@ -74,14 +78,17 @@ fun OdometerScreen(onBack: () -> Unit, viewModel: OdometerViewModel = hiltViewMo
             items(state.entries, key = { it.id }) { entry ->
                 Card(Modifier.fillMaxWidth()) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column {
+                        Column(Modifier.weight(1f)) {
                             Text("${"%,d".format(entry.readingKm)} km", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                             if (entry.note.isNotBlank()) Text(entry.note)
                         }
                         Column {
                             val date = Instant.ofEpochMilli(entry.recordedAtEpochMillis).atZone(ZoneId.systemDefault()).toLocalDate()
-                            Text(date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+                            Text(date.asDisplayDate())
                             if (entry.isCorrection) Text("Correction", color = MaterialTheme.colorScheme.tertiary)
+                        }
+                        IconButton(onClick = { deleteTarget = entry }) {
+                            Icon(Icons.Outlined.DeleteOutline, contentDescription = "Delete ${entry.readingKm} km reading")
                         }
                     }
                 }
@@ -103,12 +110,23 @@ fun OdometerScreen(onBack: () -> Unit, viewModel: OdometerViewModel = hiltViewMo
             dismissButton = { TextButton(onClick = viewModel::cancelCorrection) { Text("Cancel") } },
         )
     }
+    deleteTarget?.let { entry ->
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text("Delete odometer reading?") },
+            text = { Text("Delete the ${"%,d".format(entry.readingKm)} km reading? The current odometer and riding averages will be recalculated from the remaining history.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.delete(entry); deleteTarget = null }) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text("Cancel") } },
+        )
+    }
 }
 
 @Composable
 private fun AddReadingDialog(currentKm: Long, error: String?, onDismiss: () -> Unit, onAdd: (String, String, String) -> Unit) {
     var km by remember { mutableStateOf(currentKm.toString()) }
-    var date by remember { mutableStateOf(LocalDate.now().toString()) }
+    var date by remember { mutableStateOf(LocalDate.now()) }
     var note by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -116,12 +134,12 @@ private fun AddReadingDialog(currentKm: Long, error: String?, onDismiss: () -> U
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(km, { km = it.filter(Char::isDigit) }, label = { Text("Reading (km)") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(date, { date = it }, label = { Text("Date (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
+                MotoCareDateField(date = date, onDateSelected = { date = it }, label = "Reading date")
                 OutlinedTextField(note, { note = it }, label = { Text("Note (optional)") }, modifier = Modifier.fillMaxWidth())
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         },
-        confirmButton = { TextButton(onClick = { onAdd(km, date, note) }) { Text("Save") } },
+        confirmButton = { TextButton(onClick = { onAdd(km, date.toString(), note) }) { Text("Save") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

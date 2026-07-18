@@ -39,4 +39,13 @@ class OdometerRepository @Inject constructor(
         database.motorcycleDao().update(motorcycle.copy(currentOdometerKm = readingKm))
         OdometerValidation.Valid
     }
+
+    suspend fun deleteReading(entry: OdometerEntryEntity) = database.withTransaction {
+        val motorcycle = database.motorcycleDao().getById(entry.motorcycleId) ?: return@withTransaction
+        database.odometerDao().delete(entry)
+        val latestReading = database.odometerDao().latest(entry.motorcycleId)?.readingKm
+        database.motorcycleDao().update(
+            motorcycle.copy(currentOdometerKm = latestReading ?: motorcycle.initialOdometerKm),
+        )
+    }
 }
