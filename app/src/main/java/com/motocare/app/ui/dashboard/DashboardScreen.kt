@@ -2,6 +2,7 @@ package com.motocare.app.ui.dashboard
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,7 +36,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
@@ -97,33 +101,44 @@ fun DashboardScreen(
             }
         }
         val quickActionScroll = rememberScrollState()
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Quick actions", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            Text(
-                when {
-                    quickActionScroll.canScrollBackward && quickActionScroll.canScrollForward -> "← Swipe →"
-                    quickActionScroll.canScrollBackward -> "← Swipe back"
-                    quickActionScroll.canScrollForward -> "Swipe for more →"
-                    else -> ""
-                },
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(quickActionScroll),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Text("Quick actions", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceVariant,
         ) {
-            QuickAction("Odometer", Icons.Outlined.Add, onAddOdometer)
-            QuickAction("Maintenance", Icons.Outlined.Build, onMaintenance)
-            QuickAction("Service", Icons.AutoMirrored.Outlined.ReceiptLong, onAddService)
-            QuickAction("Fuel", Icons.Outlined.LocalGasStation, onAddFuel)
-            QuickAction("Parking", Icons.Outlined.LocalParking, onAddParking)
-            QuickAction("Expense", Icons.AutoMirrored.Outlined.ReceiptLong, onAddExpense)
-            QuickAction("Loan", Icons.Outlined.Payments, onLoan)
-            QuickAction("Issue", Icons.Outlined.ReportProblem, onIssues)
+            Column(
+                modifier = Modifier.padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(quickActionScroll)
+                        .semantics {
+                            contentDescription = "Quick actions"
+                            stateDescription = when {
+                                quickActionScroll.canScrollBackward && quickActionScroll.canScrollForward -> "Middle of list"
+                                quickActionScroll.canScrollBackward -> "End of list"
+                                quickActionScroll.canScrollForward -> "Start of list; more actions available"
+                                else -> "All actions visible"
+                            }
+                        }
+                        .padding(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    QuickAction("Odometer", Icons.Outlined.Add, onAddOdometer)
+                    QuickAction("Maintenance", Icons.Outlined.Build, onMaintenance)
+                    QuickAction("Service", Icons.AutoMirrored.Outlined.ReceiptLong, onAddService)
+                    QuickAction("Fuel", Icons.Outlined.LocalGasStation, onAddFuel)
+                    QuickAction("Parking", Icons.Outlined.LocalParking, onAddParking)
+                    QuickAction("Expense", Icons.AutoMirrored.Outlined.ReceiptLong, onAddExpense)
+                    QuickAction("Loan", Icons.Outlined.Payments, onLoan)
+                    QuickAction("Issue", Icons.Outlined.ReportProblem, onIssues)
+                }
+                HorizontalScrollIndicator(quickActionScroll)
+            }
         }
-        HorizontalScrollIndicator(quickActionScroll.value, quickActionScroll.maxValue)
         Text("Maintenance", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             MetricCard("Due soon", state.dueSoonCount.toString(), Modifier.weight(1f))
@@ -170,26 +185,33 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun HorizontalScrollIndicator(value: Int, maxValue: Int) {
-    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+private fun HorizontalScrollIndicator(scrollState: ScrollState) {
+    val trackColor = MaterialTheme.colorScheme.outlineVariant
     val thumbColor = MaterialTheme.colorScheme.primary
-    val percent = if (maxValue > 0) (value * 100 / maxValue) else 100
-    Canvas(
-        Modifier.fillMaxWidth().height(4.dp).semantics {
-            contentDescription = "Quick actions scroll indicator"
-            stateDescription = if (maxValue > 0) "$percent percent" else "All actions visible"
-        },
-    ) {
-        drawRoundRect(trackColor, cornerRadius = CornerRadius(size.height, size.height))
-        val contentWidth = size.width + maxValue
+    Canvas(Modifier.fillMaxWidth().height(4.dp)) {
+        val horizontalInset = 12.dp.toPx()
+        val trackWidth = (size.width - horizontalInset * 2).coerceAtLeast(0f)
+        drawRoundRect(
+            color = trackColor,
+            topLeft = Offset(horizontalInset, 0f),
+            size = Size(trackWidth, size.height),
+            cornerRadius = CornerRadius(size.height, size.height),
+        )
+        val contentWidth = size.width + scrollState.maxValue
         val thumbWidth = if (contentWidth > 0) {
-            (size.width * (size.width / contentWidth)).coerceIn(size.width * 0.2f, size.width)
-        } else size.width
-        val offset = if (maxValue > 0) (size.width - thumbWidth) * value / maxValue else 0f
+            (trackWidth * (size.width / contentWidth)).coerceIn(trackWidth * 0.2f, trackWidth)
+        } else trackWidth
+        val progress = if (scrollState.maxValue > 0) {
+            scrollState.value.toFloat() / scrollState.maxValue
+        } else 0f
+        val startOffset = (trackWidth - thumbWidth) * progress
+        val offset = if (layoutDirection == LayoutDirection.Rtl) {
+            trackWidth - thumbWidth - startOffset
+        } else startOffset
         drawRoundRect(
             color = thumbColor,
-            topLeft = androidx.compose.ui.geometry.Offset(offset, 0f),
-            size = androidx.compose.ui.geometry.Size(thumbWidth, size.height),
+            topLeft = Offset(horizontalInset + offset, 0f),
+            size = Size(thumbWidth, size.height),
             cornerRadius = CornerRadius(size.height, size.height),
         )
     }
