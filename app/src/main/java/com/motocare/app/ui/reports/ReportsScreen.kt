@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -55,7 +56,15 @@ fun ReportsScreen(onBack: () -> Unit, viewModel: ReportsViewModel = hiltViewMode
 
 @Composable
 private fun SummaryCard(label: String, value: String, modifier: Modifier) {
-    Card(modifier) { Column(Modifier.padding(14.dp)) { Text(label, style = MaterialTheme.typography.labelLarge); Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) } }
+    Card(
+        modifier,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
+            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+        }
+    }
 }
 
 @Composable
@@ -63,22 +72,32 @@ private fun NativeBarChart(title: String, points: List<MonthlyPoint>, valueLabel
     val max = points.maxOfOrNull { it.value }?.coerceAtLeast(1) ?: 1
     val description = points.joinToString(", ") { "${it.month.format(DateTimeFormatter.ofPattern("MMM yyyy"))}: ${valueLabel(it.value)}" }
     val outline = MaterialTheme.colorScheme.outlineVariant
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        if (points.all { it.value == 0L }) {
-            Text("No data in this period", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.semantics { contentDescription = "$title. $description" })
-        } else {
-            Canvas(Modifier.fillMaxWidth().height(120.dp).semantics { contentDescription = "$title. $description" }) {
-                val slot = size.width / points.size.coerceAtLeast(1)
-                val barWidth = slot * 0.55f
-                drawLine(outline, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
-                points.forEachIndexed { index, point ->
-                    val height = size.height * (point.value.toFloat() / max)
-                    drawRect(color, Offset(index * slot + (slot - barWidth) / 2, size.height - height), Size(barWidth, height))
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            if (points.all { it.value == 0L }) {
+                Text(
+                    "No data in this period",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.semantics { contentDescription = "$title. $description" },
+                )
+            } else {
+                Canvas(Modifier.fillMaxWidth().height(120.dp).semantics { contentDescription = "$title. $description" }) {
+                    val slot = size.width / points.size.coerceAtLeast(1)
+                    val barWidth = slot * 0.55f
+                    drawLine(outline, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
+                    points.forEachIndexed { index, point ->
+                        val height = size.height * (point.value.toFloat() / max)
+                        drawRect(color, Offset(index * slot + (slot - barWidth) / 2, size.height - height), Size(barWidth, height))
+                    }
                 }
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                points.forEach { Text(it.month.format(DateTimeFormatter.ofPattern("MMM")), style = MaterialTheme.typography.labelSmall) }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                    points.forEach { Text(it.month.format(DateTimeFormatter.ofPattern("MMM")), style = MaterialTheme.typography.labelSmall) }
+                }
             }
         }
     }

@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -45,6 +46,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.data.local.entity.MaintenanceScheduleEntity
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.asPeso
+import com.motocare.app.ui.components.MotoCareEmptyState
 import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,7 +60,15 @@ fun ServiceScreen(onBack: () -> Unit, viewModel: ServiceViewModel = hiltViewMode
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Text(state.motorcycle?.name ?: "No motorcycle selected", style = MaterialTheme.typography.titleLarge) }
-            if (state.records.isEmpty()) item { Text("No service records yet. Completed maintenance will appear here.") }
+            if (state.records.isEmpty()) item {
+                MotoCareEmptyState(
+                    title = "No service records yet",
+                    detail = "Log completed work to build a useful maintenance history.",
+                    icon = Icons.Outlined.Build,
+                    actionLabel = "Add service",
+                    onAction = { showAdd = true },
+                )
+            }
             items(state.records, key = { it.id }) { record ->
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

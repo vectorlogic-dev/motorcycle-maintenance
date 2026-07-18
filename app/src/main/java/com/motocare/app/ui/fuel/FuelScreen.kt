@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.LocalGasStation
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -37,6 +38,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.asPeso
+import com.motocare.app.ui.components.MotoCareEmptyState
+import com.motocare.app.ui.components.MotoCareSummaryCard
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -52,19 +55,26 @@ fun FuelScreen(onBack: () -> Unit, viewModel: FuelViewModel = hiltViewModel()) {
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Text(state.motorcycle?.name ?: "No motorcycle selected", style = MaterialTheme.typography.titleLarge)
-                Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("Average economy", style = MaterialTheme.typography.labelLarge)
-                        Text(state.summary.averageKmPerLitre?.let { "${"%.1f".format(it)} km/L" } ?: "Add two full tanks", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                        Text("This month ${(state.summary.monthlySpendingCentavos[YearMonth.now().toString()] ?: 0).asPeso()}")
-                        val best = state.summary.bestKmPerLitre?.let { "${"%.1f".format(it)}" } ?: "—"
-                        val worst = state.summary.worstKmPerLitre?.let { "${"%.1f".format(it)}" } ?: "—"
-                        Text("Best $best • Worst $worst km/L")
-                        state.summary.fuelCostPerKmCentavos?.let { Text("Fuel cost ${(it.toLong()).asPeso()}/km") }
-                    }
-                }
+                val best = state.summary.bestKmPerLitre?.let { "${"%.1f".format(it)}" } ?: "—"
+                val worst = state.summary.worstKmPerLitre?.let { "${"%.1f".format(it)}" } ?: "—"
+                MotoCareSummaryCard(
+                    label = "Average economy",
+                    value = state.summary.averageKmPerLitre?.let { "${"%.1f".format(it)} km/L" } ?: "Add two full tanks",
+                    detail = "This month ${(state.summary.monthlySpendingCentavos[YearMonth.now().toString()] ?: 0).asPeso()} • Best $best • Worst $worst km/L" +
+                        (state.summary.fuelCostPerKmCentavos?.let { "\nFuel cost ${(it.toLong()).asPeso()}/km" } ?: ""),
+                    icon = Icons.Outlined.LocalGasStation,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
             }
-            if (state.entries.isEmpty()) item { Text("No fuel entries. Economy is calculated only between valid full-tank entries.") }
+            if (state.entries.isEmpty()) item {
+                MotoCareEmptyState(
+                    title = "No fuel entries yet",
+                    detail = "Economy is calculated between valid full-tank entries.",
+                    icon = Icons.Outlined.LocalGasStation,
+                    actionLabel = "Add fuel",
+                    onAction = { showAdd = true },
+                )
+            }
             items(state.entries, key = { it.id }) { entry ->
                 Card(Modifier.fillMaxWidth()) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {

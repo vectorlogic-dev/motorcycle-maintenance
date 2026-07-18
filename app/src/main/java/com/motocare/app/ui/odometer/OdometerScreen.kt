@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,6 +35,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.motocare.app.ui.components.MotoCareEmptyState
+import com.motocare.app.ui.components.MotoCareSummaryCard
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -51,9 +54,23 @@ fun OdometerScreen(onBack: () -> Unit, viewModel: OdometerViewModel = hiltViewMo
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Text(state.motorcycle?.name ?: "No motorcycle selected", style = MaterialTheme.typography.titleLarge)
-                Text("Average ${"%.1f".format(state.stats.averageKmPerDay)} km/day • ${"%.0f".format(state.stats.averageKmPerMonth)} km/month")
+                MotoCareSummaryCard(
+                    label = "Current odometer",
+                    value = "${"%,d".format(state.motorcycle?.currentOdometerKm ?: 0)} km",
+                    detail = "Average ${"%.1f".format(state.stats.averageKmPerDay)} km/day • ${"%.0f".format(state.stats.averageKmPerMonth)} km/month",
+                    icon = Icons.Outlined.Speed,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
             }
-            if (state.entries.isEmpty()) item { Text("No readings yet. Add the current odometer to begin.") }
+            if (state.entries.isEmpty()) item {
+                MotoCareEmptyState(
+                    title = "No readings yet",
+                    detail = "Add the current odometer to begin measuring your riding patterns.",
+                    icon = Icons.Outlined.Speed,
+                    actionLabel = "Add reading",
+                    onAction = { showAdd = true },
+                )
+            }
             items(state.entries, key = { it.id }) { entry ->
                 Card(Modifier.fillMaxWidth()) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {

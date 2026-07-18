@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ReportProblem
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
@@ -41,6 +42,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.data.local.entity.ProblemLogEntity
+import com.motocare.app.ui.components.MotoCareEmptyState
+import com.motocare.app.ui.components.MotoCareStatusPill
+import com.motocare.app.ui.theme.motoCareStatusColors
 import com.motocare.app.util.asDisplayDate
 import java.time.LocalDate
 
@@ -58,13 +62,26 @@ fun ProblemScreen(onBack: () -> Unit, viewModel: ProblemViewModel = hiltViewMode
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Text(state.motorcycle?.name ?: "No motorcycle selected", style = MaterialTheme.typography.titleLarge) }
-            if (state.problems.isEmpty()) item { Text("No issues logged. Unresolved problems will also appear on the dashboard.") }
+            if (state.problems.isEmpty()) item {
+                MotoCareEmptyState(
+                    title = "No issues logged",
+                    detail = "Problems you log here stay visible on the dashboard until resolved.",
+                    icon = Icons.Outlined.ReportProblem,
+                    actionLabel = "Log an issue",
+                    onAction = { adding = true },
+                )
+            }
             items(state.problems, key = { it.id }) { problem ->
                 Card(Modifier.fillMaxWidth().clickable(enabled = !problem.resolved) { resolving = problem }) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(problem.symptom, fontWeight = FontWeight.SemiBold)
-                            Text(if (problem.resolved) "RESOLVED" else problem.severity, color = if (problem.resolved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                            val statusColors = MaterialTheme.motoCareStatusColors
+                            MotoCareStatusPill(
+                                if (problem.resolved) "RESOLVED" else problem.severity,
+                                if (problem.resolved) statusColors.success else MaterialTheme.colorScheme.error,
+                                if (problem.resolved) statusColors.successContainer else MaterialTheme.colorScheme.errorContainer,
+                            )
                         }
                         Text(LocalDate.ofEpochDay(problem.dateEpochDay).asDisplayDate() + (problem.odometerKm?.let { " • $it km" } ?: ""))
                         if (problem.description.isNotBlank()) Text(problem.description)

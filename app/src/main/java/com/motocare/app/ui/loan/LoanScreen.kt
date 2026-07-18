@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -38,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.data.local.entity.LoanPaymentEntity
+import com.motocare.app.ui.components.MotoCareEmptyState
+import com.motocare.app.ui.components.MotoCareSummaryCard
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.asPeso
 import java.time.LocalDate
@@ -53,25 +56,28 @@ fun LoanScreen(onBack: () -> Unit, viewModel: LoanViewModel = hiltViewModel()) {
     Scaffold(topBar = { TopAppBar(title = { Text("Financing") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) }) { padding ->
         if (state.loan == null) {
             Column(Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.Center) {
-                Text("No financing plan", style = MaterialTheme.typography.headlineSmall)
-                Text("Add the agreement details to track due dates, rebates, and payment progress.")
-                Button(onClick = { showSetup = true }, modifier = Modifier.padding(top = 16.dp)) { Text("Set up financing") }
+                MotoCareEmptyState(
+                    title = "No financing plan",
+                    detail = "Add the agreement details to track due dates, rebates, and payment progress.",
+                    icon = Icons.Outlined.Payments,
+                    actionLabel = "Set up financing",
+                    onAction = { showSetup = true },
+                )
             }
         } else {
             LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item {
                     Text(state.motorcycle?.name.orEmpty(), style = MaterialTheme.typography.titleLarge)
                     state.summary?.let { summary ->
-                        Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text("${summary.remainingPayments} payments remaining", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                                Text("Total paid ${summary.totalPaidCentavos.asPeso()}")
-                                Text("Rebates earned ${summary.rebatesEarnedCentavos.asPeso()} • lost ${summary.rebatesLostCentavos.asPeso()}")
-                                Text("Projected financing cost ${summary.projectedFinancingCostCentavos.asPeso()}")
-                                summary.nextPaymentDate?.let { Text("Next due ${it.asDisplayDate()} • ${summary.daysUntilDue} days") }
-                                summary.estimatedPayoffDate?.let { Text("Estimated payoff ${it.asDisplayDate()}") }
-                            }
-                        }
+                        MotoCareSummaryCard(
+                            label = "Financing progress",
+                            value = "${summary.remainingPayments} payments remaining",
+                            detail = "Total paid ${summary.totalPaidCentavos.asPeso()} • rebates ${summary.rebatesEarnedCentavos.asPeso()}" +
+                                (summary.nextPaymentDate?.let { "\nNext due ${it.asDisplayDate()} • ${summary.daysUntilDue} days" } ?: "") +
+                                (summary.estimatedPayoffDate?.let { "\nEstimated payoff ${it.asDisplayDate()}" } ?: ""),
+                            icon = Icons.Outlined.Payments,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        )
                     }
                     Text("Payment schedule", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 16.dp))
                 }

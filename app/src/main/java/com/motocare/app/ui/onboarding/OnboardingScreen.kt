@@ -9,7 +9,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.TwoWheeler
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -19,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.motocare.app.ui.components.MotoCareIconBadge
 
 @Composable
 fun OnboardingScreen(viewModel: OnboardingViewModel) {
@@ -27,11 +32,28 @@ fun OnboardingScreen(viewModel: OnboardingViewModel) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(Icons.Outlined.Build, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(20.dp))
+        MotoCareIconBadge(
+            icon = Icons.Outlined.TwoWheeler,
+            modifier = Modifier.padding(bottom = 20.dp),
+            contentDescription = "Motorcycle maintenance",
+        )
         Text("MotoCare", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-        Text("Maintenance, mileage, and ownership costs — kept on this device.", style = MaterialTheme.typography.bodyLarge)
-        Spacer(Modifier.height(40.dp))
+        Text(
+            "Your motorcycle’s story, from every kilometre to every service.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(28.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OnboardingBenefit(Icons.Outlined.Build, "Editable maintenance schedules")
+                OnboardingBenefit(Icons.Outlined.Lock, "Private and stored on this device")
+            }
+        }
+        Spacer(Modifier.height(24.dp))
         Button(onClick = viewModel::createSample, modifier = Modifier.fillMaxWidth()) {
             Text("Create Honda Click125 sample")
         }
@@ -43,6 +65,18 @@ fun OnboardingScreen(viewModel: OnboardingViewModel) {
         Text(
             "Sample schedules are editable templates. Confirm intervals with your owner’s manual or dealer booklet.",
             style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+@Composable
+private fun OnboardingBenefit(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String) {
+    androidx.compose.foundation.layout.Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+        Text(label, color = MaterialTheme.colorScheme.onSecondaryContainer, fontWeight = FontWeight.Medium)
     }
 }

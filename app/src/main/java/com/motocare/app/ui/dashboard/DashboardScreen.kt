@@ -22,6 +22,8 @@ import androidx.compose.material.icons.outlined.LocalGasStation
 import androidx.compose.material.icons.outlined.LocalParking
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.ReportProblem
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.TwoWheeler
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -48,6 +50,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.domain.model.MaintenanceStatus
+import com.motocare.app.ui.components.MotoCarePageHeader
+import com.motocare.app.ui.components.MotoCareSectionHeader
+import com.motocare.app.ui.components.MotoCareStatusPill
+import com.motocare.app.ui.components.MotoCareSummaryCard
+import com.motocare.app.ui.theme.motoCareStatusColors
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.asPeso
 import kotlin.math.max
@@ -73,7 +80,7 @@ fun DashboardScreen(
         Modifier.fillMaxSize().padding(contentPadding).verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("MotoCare", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        MotoCarePageHeader(title = "MotoCare", subtitle = "Ready for the road ahead", icon = Icons.Outlined.TwoWheeler)
         val selected = state.selected
         if (selected == null) {
             EmptyDashboard(onManageMotorcycles)
@@ -93,15 +100,15 @@ fun DashboardScreen(
             val date = LocalDate.ofEpochDay(it)
             Text("Purchased ${date.asDisplayDate()} • owned ${ChronoUnit.MONTHS.between(date, LocalDate.now()).coerceAtLeast(0)} months")
         }
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-            Column(Modifier.padding(20.dp)) {
-                Text("CURRENT ODOMETER", style = MaterialTheme.typography.labelMedium)
-                Text("${"%,d".format(selected.currentOdometerKm)} km", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-                Text("Avg ${"%.1f".format(state.odometerStats.averageKmPerDay)} km/day • ${"%.0f".format(state.odometerStats.averageKmPerMonth)} km/month")
-            }
-        }
+        MotoCareSummaryCard(
+            label = "Current odometer",
+            value = "${"%,d".format(selected.currentOdometerKm)} km",
+            detail = "Avg ${"%.1f".format(state.odometerStats.averageKmPerDay)} km/day • ${"%.0f".format(state.odometerStats.averageKmPerMonth)} km/month",
+            icon = Icons.Outlined.Speed,
+            modifier = Modifier.fillMaxWidth(),
+        )
         val quickActionScroll = rememberScrollState()
-        Text("Quick actions", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        MotoCareSectionHeader("Quick actions")
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.large,
@@ -139,7 +146,7 @@ fun DashboardScreen(
                 HorizontalScrollIndicator(quickActionScroll)
             }
         }
-        Text("Maintenance", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        MotoCareSectionHeader("Maintenance")
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             MetricCard("Due soon", state.dueSoonCount.toString(), Modifier.weight(1f))
             MetricCard("Overdue", state.overdueCount.toString(), Modifier.weight(1f), state.overdueCount > 0)
@@ -151,7 +158,7 @@ fun DashboardScreen(
                 status = row.assessment.status,
             )
         } ?: Text("Set intervals on your editable maintenance templates to see the next service.", style = MaterialTheme.typography.bodyMedium)
-        Text("Coverage & ownership", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        MotoCareSectionHeader("Coverage & ownership")
         state.coverage?.let {
             InfoCard("Free maintenance coverage", "${max(0, it.remainingDays)} days or ${"%,d".format(max(0, it.remainingKm))} km remaining — whichever comes first")
         }
@@ -258,17 +265,21 @@ private fun InfoCard(title: String, detail: String) {
 
 @Composable
 private fun StatusCard(title: String, detail: String, status: MaintenanceStatus) {
-    val color = when (status) {
-        MaintenanceStatus.GOOD -> MaterialTheme.colorScheme.primary
-        MaintenanceStatus.DUE_SOON -> Color(0xFF9A6700)
-        MaintenanceStatus.DUE -> MaterialTheme.colorScheme.tertiary
-        MaintenanceStatus.OVERDUE -> MaterialTheme.colorScheme.error
+    val statusColors = MaterialTheme.motoCareStatusColors
+    val (color, container) = when (status) {
+        MaintenanceStatus.GOOD -> statusColors.success to statusColors.successContainer
+        MaintenanceStatus.DUE_SOON -> statusColors.warning to statusColors.warningContainer
+        MaintenanceStatus.DUE -> MaterialTheme.colorScheme.tertiary to MaterialTheme.colorScheme.tertiaryContainer
+        MaintenanceStatus.OVERDUE -> MaterialTheme.colorScheme.error to MaterialTheme.colorScheme.errorContainer
     }
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            Text(status.name.replace('_', ' '), color = color, fontWeight = FontWeight.Bold)
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            MotoCareStatusPill(status.name.replace('_', ' '), color, container)
             Text(title, style = MaterialTheme.typography.titleMedium)
-            Text(detail)
+            Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

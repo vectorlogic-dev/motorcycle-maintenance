@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.LocalParking
+import androidx.compose.material.icons.outlined.Wallet
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
@@ -45,6 +46,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.asPeso
+import com.motocare.app.ui.components.MotoCareEmptyState
+import com.motocare.app.ui.components.MotoCareSummaryCard
 import java.time.LocalDate
 
 private val expenseCategories = listOf("FUEL", "PARKING", "MAINTENANCE", "REPAIRS", "REGISTRATION", "INSURANCE", "ACCESSORIES", "LOAN_PAYMENT", "FINES", "OTHER")
@@ -66,7 +69,15 @@ fun ExpenseScreen(onBack: () -> Unit, startWithParking: Boolean = false, viewMod
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Text(state.motorcycle?.name ?: "No motorcycle selected", style = MaterialTheme.typography.titleLarge)
-                Text("Today ${state.todayTotalCentavos.asPeso()} • Month ${state.monthTotalCentavos.asPeso()} • Year ${state.yearTotalCentavos.asPeso()}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                MotoCareSummaryCard(
+                    label = "Spent this month",
+                    value = state.monthTotalCentavos.asPeso(),
+                    detail = "Today ${state.todayTotalCentavos.asPeso()} • This year ${state.yearTotalCentavos.asPeso()}",
+                    icon = Icons.Outlined.Wallet,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
                 AssistChip(
                     onClick = viewModel::addParking,
                     label = { Text("Add today’s parking • ${state.defaultParkingCentavos.asPeso()}") },
@@ -74,7 +85,15 @@ fun ExpenseScreen(onBack: () -> Unit, startWithParking: Boolean = false, viewMod
                 )
                 TextButton(onClick = { showParkingDefault = true }) { Text("Change parking default") }
             }
-            if (state.expenses.isEmpty()) item { Text("No expenses yet. Use the parking shortcut or add a cost.") }
+            if (state.expenses.isEmpty()) item {
+                MotoCareEmptyState(
+                    title = "No expenses yet",
+                    detail = "Use the parking shortcut or add a cost to start your ownership total.",
+                    icon = Icons.Outlined.Wallet,
+                    actionLabel = "Add expense",
+                    onAction = { showAdd = true },
+                )
+            }
             items(state.expenses, key = { it.id }) { expense ->
                 Card(Modifier.fillMaxWidth()) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {

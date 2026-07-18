@@ -19,10 +19,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.TwoWheeler
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -46,6 +49,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.data.local.entity.MotorcycleEntity
+import com.motocare.app.ui.components.MotoCareEmptyState
+import com.motocare.app.ui.components.MotoCareIconBadge
 import java.time.LocalDate
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.toCentavosOrNull
@@ -64,20 +69,34 @@ fun MotorcyclesScreen(contentPadding: PaddingValues, viewModel: MotorcyclesViewM
     ) { inner ->
         if (motorcycles.isEmpty()) {
             Column(Modifier.fillMaxSize().padding(inner).padding(24.dp), verticalArrangement = Arrangement.Center) {
-                Text("Your garage is empty", style = MaterialTheme.typography.headlineSmall)
-                Text("Add a motorcycle to begin tracking it.")
-                Button(onClick = { adding = true }, modifier = Modifier.padding(top = 16.dp)) { Text("Add motorcycle") }
+                MotoCareEmptyState(
+                    title = "Your garage is empty",
+                    detail = "Add a motorcycle to begin tracking mileage, maintenance, and costs.",
+                    icon = Icons.Outlined.TwoWheeler,
+                    actionLabel = "Add motorcycle",
+                    onAction = { adding = true },
+                )
             }
         } else {
             LazyColumn(Modifier.fillMaxSize().padding(inner), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(motorcycles, key = { it.id }) { bike ->
-                    Card(Modifier.fillMaxWidth().clickable { editing = bike }) {
-                        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Card(
+                        Modifier.fillMaxWidth().clickable { editing = bike },
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    ) {
+                        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            MotoCareIconBadge(Icons.Outlined.TwoWheeler)
                             Column(Modifier.weight(1f)) {
                                 Text(bike.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                                Text(listOf(bike.manufacturer, bike.model, bike.variant).filter { it.isNotBlank() }.joinToString(" "))
-                                Text("${"%,d".format(bike.currentOdometerKm)} km", color = MaterialTheme.colorScheme.primary)
-                                bike.purchaseDateEpochDay?.let { Text("Purchased ${LocalDate.ofEpochDay(it).asDisplayDate()}", style = MaterialTheme.typography.bodySmall) }
+                                Text(
+                                    listOf(bike.manufacturer, bike.model, bike.variant).filter { it.isNotBlank() }.joinToString(" "),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                    Icon(Icons.Outlined.Speed, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Text("${"%,d".format(bike.currentOdometerKm)} km", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                                }
+                                bike.purchaseDateEpochDay?.let { Text("Purchased ${LocalDate.ofEpochDay(it).asDisplayDate()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             }
                             IconButton(onClick = { archiveTarget = bike }) { Icon(Icons.Outlined.Archive, "Archive ${bike.name}") }
                         }

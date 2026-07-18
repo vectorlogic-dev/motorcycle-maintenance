@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.TwoWheeler
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -114,7 +115,7 @@ private fun MainNavigation() {
     Scaffold(
         bottomBar = {
             if (route in destinations.map { it.route }) {
-                NavigationBar {
+                NavigationBar(tonalElevation = NavigationBarDefaults.Elevation) {
                     destinations.forEach { destination ->
                         NavigationBarItem(
                             selected = route == destination.route,
