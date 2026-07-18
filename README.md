@@ -27,7 +27,7 @@ MotoCare is an Android-first, offline motorcycle maintenance and ownership track
 - Repository, migration, and critical-screen instrumentation coverage
 - Offline privacy documentation and a Play Store release checklist
 
-Phases 1–4 of the initial MotoCare brief are implemented. The project is an unsigned preview build; final adaptive artwork, store assets, release signing, and physical-device accessibility checks remain release-owner tasks.
+Phases 1–4 of the initial MotoCare brief are implemented. The codebase produces an optimized 1.0.0 release bundle. Final artwork, store assets, release signing credentials, and physical-device accessibility checks remain release-owner tasks.
 
 ## Build
 
@@ -39,7 +39,10 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 ./gradlew assembleDebug
 ./gradlew connectedDebugAndroidTest
 ./gradlew lintDebug
+./gradlew bundleRelease
 ```
+
+Release optimization is always enabled. To sign the bundle, provide the four `MOTOCARE_RELEASE_*` Gradle properties described in [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md); credentials and keystores must stay outside source control.
 
 Maintenance intervals in sample data are deliberately blank editable templates. Users must confirm intervals against the motorcycle owner’s manual or dealer booklet.
 

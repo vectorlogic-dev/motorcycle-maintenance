@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.motocare.app.data.local.MotoCareDatabase
+import com.motocare.app.backup.BackupRepository
 import com.motocare.app.data.local.entity.MotorcycleEntity
 import com.motocare.app.data.local.entity.ExpenseEntity
 import com.motocare.app.data.local.entity.FuelEntryEntity
@@ -159,5 +160,56 @@ class RepositoryOperationsTest {
         services.delete(service)
         assertEquals(1L, repository.get(motorcycleId)?.currentOdometerKm)
         assertEquals(null, database.maintenanceDao().getById(scheduleId)?.lastServiceOdometerKm)
+    }
+
+    @Test
+    fun backupRestore_upgradesVersionOneMotorcycles() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        BackupRepository(context, database).restoreJsonText(
+            """
+            {
+              "format":"MotoCare backup",
+              "schemaVersion":1,
+              "tables":{"motorcycles":[{
+                "id":7,"name":"Legacy bike","manufacturer":"Honda","model":"Click","variant":"",
+                "year":null,"purchaseDateEpochDay":null,"initialOdometerKm":12,"currentOdometerKm":20,
+                "plateNumber":"","engineNumber":"","chassisNumber":"","registrationExpiryEpochDay":null,
+                "insuranceExpiryEpochDay":null,"isFinanced":1,"notes":"","photoUri":null,"archived":0,
+                "createdAtEpochMillis":0
+              }]}
+            }
+            """.trimIndent(),
+        )
+
+        val restored = requireNotNull(repository.get(7))
+        assertEquals("FINANCED", restored.purchaseType)
+        assertEquals(null, restored.purchasePriceCentavos)
+        assertEquals("", restored.seller)
+        assertEquals(false, restored.secondHand)
+    }
+
+    @Test
+    fun backupRestore_rollsBackWhenAnyRowIsInvalid() = runTest {
+        val existingId = repository.add(
+            MotorcycleEntity(
+                name = "Keep me", manufacturer = "Honda", model = "BeAT",
+                initialOdometerKm = 1, currentOdometerKm = 1,
+            ),
+        )
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val failure = runCatching {
+            BackupRepository(context, database).restoreJsonText(
+                """
+                {
+                  "format":"MotoCare backup",
+                  "schemaVersion":2,
+                  "tables":{"motorcycles":[{"id":9,"name":null}]}
+                }
+                """.trimIndent(),
+            )
+        }
+
+        assertEquals(true, failure.isFailure)
+        assertEquals("Keep me", repository.get(existingId)?.name)
     }
 }

@@ -6,6 +6,13 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
+val releaseStoreFile = providers.gradleProperty("MOTOCARE_RELEASE_STORE_FILE").orNull
+val releaseStorePassword = providers.gradleProperty("MOTOCARE_RELEASE_STORE_PASSWORD").orNull
+val releaseKeyAlias = providers.gradleProperty("MOTOCARE_RELEASE_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.gradleProperty("MOTOCARE_RELEASE_KEY_PASSWORD").orNull
+val hasReleaseSigning = listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
+    .all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.motocare.app"
     compileSdk = 36
@@ -15,13 +22,36 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
 
     buildFeatures { compose = true }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(requireNotNull(releaseStoreFile))
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            signingConfig = signingConfigs.findByName("release")
+        }
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

@@ -17,7 +17,7 @@ import javax.inject.Singleton
 
 @Singleton
 class BackupRepository @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val database: MotoCareDatabase,
 ) {
     private val tables = listOf(
@@ -55,9 +55,14 @@ class BackupRepository @Inject constructor(
     suspend fun restoreJson(uri: Uri) = withContext(Dispatchers.IO) {
         val text = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
             ?: error("Unable to open backup")
+        restoreJsonText(text)
+    }
+
+    internal suspend fun restoreJsonText(text: String) {
         val root = JSONObject(text)
         require(root.optString("format") == "MotoCare backup") { "Not a MotoCare backup" }
-        require(root.optInt("schemaVersion") in 1..2) { "Unsupported backup version" }
+        val schemaVersion = root.optInt("schemaVersion")
+        require(schemaVersion in 1..2) { "Unsupported backup version" }
         val data = root.getJSONObject("tables")
         database.withTransaction {
             val db = database.openHelper.writableDatabase
@@ -66,6 +71,7 @@ class BackupRepository @Inject constructor(
                 val rows = data.optJSONArray(table) ?: JSONArray()
                 repeat(rows.length()) { index ->
                     val row = rows.getJSONObject(index)
+                    if (schemaVersion == 1 && table == "motorcycles") row.upgradeMotorcycleFromV1()
                     val values = ContentValues()
                     row.keys().forEach { key -> values.putJson(key, row.get(key)) }
                     check(db.insert(table, android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE, values) != -1L) {
@@ -73,8 +79,18 @@ class BackupRepository @Inject constructor(
                     }
                 }
             }
+            db.query("PRAGMA foreign_key_check").use { cursor ->
+                check(!cursor.moveToFirst()) { "Backup contains broken record relationships" }
+            }
         }
         database.invalidationTracker.refreshAsync()
+    }
+
+    private fun JSONObject.upgradeMotorcycleFromV1() {
+        if (!has("purchaseType")) put("purchaseType", if (optInt("isFinanced") != 0) "FINANCED" else "UNKNOWN")
+        if (!has("purchasePriceCentavos")) put("purchasePriceCentavos", JSONObject.NULL)
+        if (!has("seller")) put("seller", "")
+        if (!has("secondHand")) put("secondHand", false)
     }
 
     suspend fun writeCsv(uri: Uri, table: String) = withContext(Dispatchers.IO) {

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0
+
+First production-candidate release.
+
+- All features from the four implementation phases, including editable history and calendar-based date entry
+- Version-1 and version-2 JSON backup compatibility with transactional rollback on invalid restores
+- Enforced offline permission contract and disabled Android cloud/device-transfer backup
+- Optimized release bundle with external, source-control-safe signing configuration
+
 ## 0.1.0
 
 Initial offline preview release.

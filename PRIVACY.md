@@ -18,4 +18,6 @@ The user controls backup and export destinations. Restoring a JSON backup replac
 
 MotoCare requests notification permission on supported Android versions. It does not request broad storage access, location, contacts, camera, microphone, or network access.
 
-This document describes version 0.1.0 and should be reviewed whenever dependencies or data handling change.
+Android may also declare non-runtime WorkManager permissions for scheduled local reminders, including wake lock, boot completion, and foreground-service support. MotoCare's automated manifest test rejects network, broad storage, location, camera, microphone, and contacts permissions.
+
+This document describes version 1.0.0 and should be reviewed whenever dependencies or data handling change.

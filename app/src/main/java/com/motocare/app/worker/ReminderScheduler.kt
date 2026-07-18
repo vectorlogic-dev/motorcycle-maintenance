@@ -11,7 +11,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class ReminderScheduler @Inject constructor(@ApplicationContext private val context: Context) {
+class ReminderScheduler @Inject constructor(@param:ApplicationContext private val context: Context) {
     fun scheduleDailyCheck() {
         val request = PeriodicWorkRequestBuilder<ReminderWorker>(1, TimeUnit.DAYS)
             .setConstraints(Constraints.Builder().setRequiresBatteryNotLow(true).build())

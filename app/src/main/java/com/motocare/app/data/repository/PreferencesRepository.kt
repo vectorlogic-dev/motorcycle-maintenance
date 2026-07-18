@@ -17,7 +17,7 @@ import javax.inject.Singleton
 private val Context.dataStore by preferencesDataStore("motocare_preferences")
 
 @Singleton
-class PreferencesRepository @Inject constructor(@ApplicationContext private val context: Context) {
+class PreferencesRepository @Inject constructor(@param:ApplicationContext private val context: Context) {
     private object Keys {
         val selectedMotorcycleId = longPreferencesKey("selected_motorcycle_id")
         val onboardingComplete = booleanPreferencesKey("onboarding_complete")
