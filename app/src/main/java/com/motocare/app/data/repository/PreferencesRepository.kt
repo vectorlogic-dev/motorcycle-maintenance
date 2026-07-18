@@ -34,7 +34,7 @@ class PreferencesRepository @Inject constructor(@param:ApplicationContext privat
 
     val selectedMotorcycleId: Flow<Long?> = context.dataStore.data.map { it[Keys.selectedMotorcycleId] }
     val onboardingComplete: Flow<Boolean> = context.dataStore.data.map { it[Keys.onboardingComplete] ?: false }
-    val notificationsEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.notificationsEnabled] ?: true }
+    val notificationsEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.notificationsEnabled] ?: false }
     val currency: Flow<String> = context.dataStore.data.map { it[Keys.currency] ?: "PHP" }
     val distanceUnit: Flow<String> = context.dataStore.data.map { it[Keys.distanceUnit] ?: "km" }
     val dateFormat: Flow<String> = context.dataStore.data.map { it[Keys.dateFormat] ?: "dd/MM/yyyy" }

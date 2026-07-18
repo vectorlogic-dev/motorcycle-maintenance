@@ -31,6 +31,7 @@ import com.motocare.app.domain.usecase.FuelEconomyCalculator
 import com.motocare.app.domain.usecase.LoanCalculator
 import com.motocare.app.domain.usecase.MaintenanceCalculator
 import com.motocare.app.domain.usecase.OdometerCalculator
+import com.motocare.app.ui.statsFor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
@@ -105,11 +106,7 @@ class DashboardViewModel @Inject constructor(
     private val problems = selectedId.flatMapLatest { id -> id?.let(problemRepository::observe) ?: flowOf(emptyList()) }
 
     private val base = combine(selection, schedules, readings) { (bikes, selected), plans, entries ->
-        val stats = odometerCalculator.stats(
-            entries = entries,
-            initialReadingKm = selected?.initialOdometerKm,
-            initialDate = selected?.purchaseDateEpochDay?.let(LocalDate::ofEpochDay),
-        )
+        val stats = odometerCalculator.statsFor(selected, entries)
         Triple(
             DashboardUiState(
                 motorcycles = bikes,

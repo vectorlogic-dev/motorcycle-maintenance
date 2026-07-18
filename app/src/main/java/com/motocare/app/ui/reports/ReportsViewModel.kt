@@ -12,6 +12,7 @@ import com.motocare.app.data.repository.ServiceRepository
 import com.motocare.app.domain.model.CostSummary
 import com.motocare.app.domain.usecase.CostSummaryCalculator
 import com.motocare.app.domain.usecase.OdometerCalculator
+import com.motocare.app.ui.statsFor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
@@ -52,7 +53,7 @@ class ReportsViewModel @Inject constructor(
 
     val uiState = combine(selected, expenseFlow, fuelFlow, serviceFlow, odometerFlow) { bike, costs, fills, history, readings ->
         val months = (5 downTo 0).map { YearMonth.now().minusMonths(it.toLong()) }
-        val stats = odometerCalculator.stats(readings)
+        val stats = odometerCalculator.statsFor(bike, readings)
         val monthlyCost = months.map { month ->
             val total = costs.filter { YearMonth.from(LocalDate.ofEpochDay(it.dateEpochDay)) == month }.sumOf { it.amountCentavos } +
                 fills.filter { YearMonth.from(LocalDate.ofEpochDay(it.dateEpochDay)) == month }.sumOf { it.totalCostCentavos } +

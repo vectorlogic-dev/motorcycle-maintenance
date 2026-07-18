@@ -8,6 +8,8 @@ First production-candidate release.
 - Version-1 and version-2 JSON backup compatibility with transactional rollback on invalid restores
 - Enforced offline permission contract and disabled Android cloud/device-transfer backup
 - Optimized release bundle with external, source-control-safe signing configuration
+- Consistent purchase-baseline riding averages across dashboard, reports, and coverage forecasts
+- Opt-in reminders, large-font scroll support, adaptive launcher artwork, and a compliant notification icon
 
 ## 0.1.0
 

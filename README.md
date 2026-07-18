@@ -9,7 +9,7 @@ MotoCare is an Android-first, offline motorcycle maintenance and ownership track
 - Manual odometer history, validation, explicit correction confirmation, and riding-rate summaries
 - Editable maintenance schedules with mileage and time triggers evaluated as “whichever comes first”
 - Dashboard for odometer, due/overdue maintenance, free-maintenance coverage, and basic financing context
-- Daily WorkManager maintenance checks and Android notification channel
+- Opt-in daily WorkManager maintenance checks and Android notification channel
 - Version-1 Room schema for the planned ownership records, URI-only attachments, Hilt, repositories, Flow, and DataStore defaults
 - Service history with receipt references and transactional maintenance-schedule updates
 - Expense tracking with daily, monthly, and annual summaries plus configurable one-tap parking
@@ -24,10 +24,11 @@ MotoCare is an Android-first, offline motorcycle maintenance and ownership track
 - Accessible six-month cost and distance reports with native Compose charts
 - Room schema v2 with a tested, non-destructive `1 → 2` migration
 - Settings for theme, date format, currency display, notification preferences, per-motorcycle reminder opt-outs, and quick-entry defaults
-- Repository, migration, and critical-screen instrumentation coverage
+- Repository, migration, privacy-manifest, and critical-screen instrumentation coverage
+- Adaptive launcher/monochrome themed icon and dedicated notification icon
 - Offline privacy documentation and a Play Store release checklist
 
-Phases 1–4 of the initial MotoCare brief are implemented. The codebase produces an optimized 1.0.0 release bundle. Final artwork, store assets, release signing credentials, and physical-device accessibility checks remain release-owner tasks.
+Phases 1–4 of the initial MotoCare brief are implemented. The codebase produces an optimized 1.0.0 release bundle. Store listing assets, release signing credentials, and physical-device accessibility checks remain release-owner tasks.
 
 ## Build
 

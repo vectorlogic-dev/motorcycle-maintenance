@@ -8,7 +8,7 @@ MotoCare is designed as an offline, single-device application.
 - MotoCare does not require an account and does not send data to a MotoCare server.
 - MotoCare does not include analytics, advertising SDKs, or user tracking.
 - Photos, videos, receipts, backups, and exports are selected or created through Android's system document picker. The database stores URI references rather than media binaries.
-- Notifications are generated locally from the user's saved dates, mileage, and preferences.
+- Notifications are opt-in and generated locally from the user's saved dates, mileage, and preferences.
 
 ## User control
 

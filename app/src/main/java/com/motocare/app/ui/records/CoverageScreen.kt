@@ -93,8 +93,8 @@ private fun CoverageDialog(existing: com.motocare.app.data.local.entity.Coverage
         title = { Text("Coverage details") },
         text = {
             Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                MotoCareDateField(start, { start = it }, "Coverage start")
-                MotoCareDateField(end, { end = it }, "Coverage end")
+                MotoCareDateField(start, { start = it }, label = "Coverage start")
+                MotoCareDateField(end, { end = it }, label = "Coverage end")
                 NumberField(startKm, { startKm = it }, "Starting odometer")
                 NumberField(limit, { limit = it }, "Coverage kilometre limit")
                 Field(services, { services = it }, "Covered services", false)

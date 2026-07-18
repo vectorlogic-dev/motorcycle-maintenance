@@ -63,7 +63,7 @@ class AppViewModel @Inject constructor(preferences: PreferencesRepository) : Vie
     val theme = preferences.theme.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "SYSTEM")
     val currency = preferences.currency.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "PHP")
     val dateFormat = preferences.dateFormat.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "dd/MM/yyyy")
-    val notificationsEnabled = preferences.notificationsEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+    val notificationsEnabled = preferences.notificationsEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 }
 
 private data class Destination(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)

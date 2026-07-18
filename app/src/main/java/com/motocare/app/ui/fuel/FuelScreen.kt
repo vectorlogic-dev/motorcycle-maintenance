@@ -133,7 +133,7 @@ private fun AddFuelDialog(existing: FuelEntryEntity?, currentKm: Long, defaultPr
         title = { Text(if (existing == null) "Add fuel" else "Edit fuel") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                MotoCareDateField(date, { date = it }, "Fuel date")
+                MotoCareDateField(date, { date = it }, label = "Fuel date")
                 OutlinedTextField(km, { km = it.filter(Char::isDigit) }, label = { Text("Odometer (km)") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(litres, { litres = decimalOnly(it) }, label = { Text("Litres") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(price, { price = decimalOnly(it) }, label = { Text("Price per litre (PHP)") }, modifier = Modifier.fillMaxWidth())

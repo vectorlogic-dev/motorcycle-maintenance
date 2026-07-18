@@ -126,7 +126,7 @@ private fun AddProblemDialog(existing: ProblemLogEntity?, currentKm: Long, onDis
     }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(if (existing == null) "Log issue" else "Edit issue") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            MotoCareDateField(date, { date = it }, "Issue date")
+            MotoCareDateField(date, { date = it }, label = "Issue date")
             OutlinedTextField(km, { km = it.filter(Char::isDigit) }, label = { Text("Odometer (km)") }, modifier = Modifier.fillMaxWidth())
             severities.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) { row.forEach { option -> AssistChip(onClick = { severity = option }, label = { Text(if (severity == option) "✓ ${option.lowercase()}" else option.lowercase()) }) } }

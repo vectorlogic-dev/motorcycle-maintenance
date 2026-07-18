@@ -174,7 +174,7 @@ private fun AddExpenseDialog(existing: ExpenseEntity?, onDismiss: () -> Unit, on
         title = { Text(if (existing == null) "Add expense" else "Edit expense") },
         text = {
             Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                MotoCareDateField(date, { date = it }, "Expense date")
+                MotoCareDateField(date, { date = it }, label = "Expense date")
                 Text("Category", fontWeight = FontWeight.SemiBold)
                 expenseCategories.chunked(3).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

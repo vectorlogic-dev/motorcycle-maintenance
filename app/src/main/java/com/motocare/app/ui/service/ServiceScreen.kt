@@ -149,7 +149,7 @@ private fun AddServiceDialog(
         title = { Text(if (existing == null) "Add service record" else "Edit service record") },
         text = {
             Column(Modifier.heightIn(max = 570.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                MotoCareDateField(date, { date = it }, "Service date")
+                MotoCareDateField(date, { date = it }, label = "Service date")
                 NumberField(km, { km = it }, "Odometer (km)")
                 Text("Maintenance completed", fontWeight = FontWeight.SemiBold)
                 schedules.forEach { schedule ->

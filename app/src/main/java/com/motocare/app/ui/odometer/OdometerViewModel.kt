@@ -10,6 +10,7 @@ import com.motocare.app.data.repository.PreferencesRepository
 import com.motocare.app.domain.model.OdometerStats
 import com.motocare.app.domain.model.OdometerValidation
 import com.motocare.app.domain.usecase.OdometerCalculator
+import com.motocare.app.ui.statsFor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,11 +54,7 @@ class OdometerViewModel @Inject constructor(
         OdometerUiState(
             motorcycle = bike,
             entries = readings,
-            stats = calculator.stats(
-                entries = readings,
-                initialReadingKm = bike?.initialOdometerKm,
-                initialDate = bike?.purchaseDateEpochDay?.let(LocalDate::ofEpochDay),
-            ),
+            stats = calculator.statsFor(bike, readings),
             correctionPreviousKm = correctionKm,
             error = message,
         )

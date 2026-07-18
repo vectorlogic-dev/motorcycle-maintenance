@@ -247,8 +247,8 @@ fun MotoCareEmptyState(
 fun MotoCareDateField(
     date: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
-    label: String = "Date",
     modifier: Modifier = Modifier,
+    label: String = "Date",
 ) {
     var showPicker by remember { mutableStateOf(false) }
     Box(modifier.fillMaxWidth()) {

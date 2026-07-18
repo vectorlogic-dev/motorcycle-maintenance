@@ -12,7 +12,7 @@
 
 ## Store preparation
 
-- Replace the preview launcher artwork with final adaptive icon assets.
+- Review the adaptive launcher and themed monochrome icon on representative OEM launchers.
 - Confirm the release `versionCode` and `versionName` are higher than the last uploaded release.
 - Configure release signing outside source control using all four Gradle properties:
   - `MOTOCARE_RELEASE_STORE_FILE`

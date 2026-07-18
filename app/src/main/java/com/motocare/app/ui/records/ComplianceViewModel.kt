@@ -15,6 +15,7 @@ import com.motocare.app.data.repository.PreferencesRepository
 import com.motocare.app.domain.model.CoverageAssessment
 import com.motocare.app.domain.usecase.CoverageCalculator
 import com.motocare.app.domain.usecase.OdometerCalculator
+import com.motocare.app.ui.statsFor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
@@ -54,7 +55,10 @@ class ComplianceViewModel @Inject constructor(
     private val readings = selectedId.flatMapLatest { it?.let(odometers::observe) ?: flowOf(emptyList()) }
     private val schedules = selectedId.flatMapLatest { it?.let(maintenance::observeActive) ?: flowOf(emptyList()) }
     private val base = combine(selected, coverage, readings, schedules) { bike, plan, entries, plans ->
-        val assessment = if (bike != null && plan != null) coverageCalculator.assess(plan, bike.currentOdometerKm, odometerCalculator.stats(entries).averageKmPerDay) else null
+        val assessment = if (bike != null && plan != null) {
+            val stats = odometerCalculator.statsFor(bike, entries)
+            coverageCalculator.assess(plan, bike.currentOdometerKm, stats.averageKmPerDay)
+        } else null
         val upcoming = if (plan == null) emptyList() else plans.filter { schedule ->
             (schedule.nextDueEpochDay?.let { it <= plan.endEpochDay } == true) ||
                 (schedule.nextDueOdometerKm?.let { it <= plan.limitOdometerKm } == true)

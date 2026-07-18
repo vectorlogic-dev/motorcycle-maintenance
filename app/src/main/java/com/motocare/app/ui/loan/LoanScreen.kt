@@ -140,7 +140,7 @@ private fun LoanSetupDialog(onDismiss: () -> Unit, onSave: (LoanInput) -> Unit) 
                 DigitsField(term, { term = it }, "Term (months)")
                 DigitsField(dueDay, { dueDay = it }, "Payment due day")
                 MoneyField(rebate, { rebate = it }, "On-time rebate")
-                MotoCareDateField(start, { start = it }, "Financing start")
+                MotoCareDateField(start, { start = it }, label = "Financing start")
                 OutlinedTextField(notes, { notes = it }, label = { Text("Notes") }, modifier = Modifier.fillMaxWidth())
             }
         },

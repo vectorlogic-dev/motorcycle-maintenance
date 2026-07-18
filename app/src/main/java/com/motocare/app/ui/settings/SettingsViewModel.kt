@@ -17,7 +17,7 @@ data class SettingsUiState(
     val currency: String = "PHP",
     val dateFormat: String = "dd/MM/yyyy",
     val theme: String = "SYSTEM",
-    val notificationsEnabled: Boolean = true,
+    val notificationsEnabled: Boolean = false,
     val staleOdometerDays: Int = 14,
     val defaultParkingCentavos: Long = 3_500,
     val defaultFuelPriceCentavos: Long = 7_000,
