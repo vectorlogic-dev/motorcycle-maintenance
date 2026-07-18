@@ -2,6 +2,8 @@
 
 MotoCare is an Android-first, offline motorcycle maintenance and ownership tracker built with Kotlin and Jetpack Compose.
 
+Website: [vectorlogic-dev.github.io/motorcycle-maintenance](https://vectorlogic-dev.github.io/motorcycle-maintenance/) · Support: [motocaresupport@icloud.com](mailto:motocaresupport@icloud.com)
+
 ## Implemented
 
 - Optional Honda Click125 Smart Edition sample setup or an empty start
@@ -47,4 +49,4 @@ Release optimization is always enabled. To sign the bundle, provide the four `MO
 
 Maintenance intervals in sample data are deliberately blank editable templates. Users must confirm intervals against the motorcycle owner’s manual or dealer booklet.
 
-See [PRIVACY.md](PRIVACY.md) for local data handling, [docs/PRODUCTION_AUDIT.md](docs/PRODUCTION_AUDIT.md) for the verified release-candidate status, and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) for release-owner preparation.
+See the [public privacy policy](https://vectorlogic-dev.github.io/motorcycle-maintenance/privacy/), [docs/PRODUCTION_AUDIT.md](docs/PRODUCTION_AUDIT.md) for the verified release-candidate status, and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) for release-owner preparation.

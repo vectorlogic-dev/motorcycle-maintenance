@@ -23,9 +23,9 @@
 - Run `./gradlew bundleRelease`; an unsigned bundle is produced when the four properties are absent.
 - Generate a signed Android App Bundle and inspect it with Android Studio's APK Analyzer.
 - Archive `app/build/outputs/mapping/release/mapping.txt` with every release so obfuscated stack traces can be retraced.
-- Complete the Play data-safety form using `PRIVACY.md` and publish the privacy policy at a stable URL.
+- Complete the Play data-safety form using `PRIVACY.md` and use `https://vectorlogic-dev.github.io/motorcycle-maintenance/privacy/` as the privacy-policy URL.
 - Capture phone screenshots in light and dark themes.
-- Confirm the app name, short description, full description, content rating, and support contact.
+- Confirm the app name, short description, full description, content rating, and `motocaresupport@icloud.com` support contact.
 
 ## Final safety checks
 
