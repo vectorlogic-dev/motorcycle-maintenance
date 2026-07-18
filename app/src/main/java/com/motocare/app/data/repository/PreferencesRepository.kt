@@ -43,4 +43,8 @@ class PreferencesRepository @Inject constructor(@ApplicationContext private val 
     suspend fun finishOnboarding() {
         context.dataStore.edit { it[Keys.onboardingComplete] = true }
     }
+
+    suspend fun setDefaultParkingCentavos(amount: Long) {
+        context.dataStore.edit { it[Keys.defaultParkingCentavos] = amount.coerceAtLeast(0) }
+    }
 }

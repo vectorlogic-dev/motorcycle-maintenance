@@ -7,10 +7,16 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.motocare.app.data.local.entity.CoveragePlanEntity
+import com.motocare.app.data.local.entity.AttachmentReferenceEntity
+import com.motocare.app.data.local.entity.ExpenseEntity
+import com.motocare.app.data.local.entity.FuelEntryEntity
 import com.motocare.app.data.local.entity.LoanEntity
+import com.motocare.app.data.local.entity.LoanPaymentEntity
 import com.motocare.app.data.local.entity.MaintenanceScheduleEntity
 import com.motocare.app.data.local.entity.MotorcycleEntity
 import com.motocare.app.data.local.entity.OdometerEntryEntity
+import com.motocare.app.data.local.entity.ServiceRecordEntity
+import com.motocare.app.data.local.entity.ServiceRecordItemEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -63,6 +69,9 @@ interface MaintenanceDao {
     @Insert
     suspend fun insertAll(schedules: List<MaintenanceScheduleEntity>)
 
+    @Query("SELECT * FROM maintenance_schedules WHERE id = :id")
+    suspend fun getById(id: Long): MaintenanceScheduleEntity?
+
     @Update
     suspend fun update(schedule: MaintenanceScheduleEntity)
 
@@ -83,4 +92,67 @@ interface PhaseTwoDao {
 
     @Query("SELECT * FROM loans WHERE motorcycleId = :motorcycleId LIMIT 1")
     fun observeLoan(motorcycleId: Long): Flow<LoanEntity?>
+}
+
+@Dao
+interface ServiceDao {
+    @Query("SELECT * FROM service_records WHERE motorcycleId = :motorcycleId ORDER BY serviceEpochDay DESC, id DESC")
+    fun observeRecords(motorcycleId: Long): Flow<List<ServiceRecordEntity>>
+
+    @Query("SELECT maintenanceScheduleId FROM service_record_items WHERE serviceRecordId = :serviceRecordId")
+    suspend fun itemIds(serviceRecordId: Long): List<Long>
+
+    @Insert
+    suspend fun insert(record: ServiceRecordEntity): Long
+
+    @Insert
+    suspend fun insertItems(items: List<ServiceRecordItemEntity>)
+
+    @Insert
+    suspend fun insertAttachment(attachment: AttachmentReferenceEntity): Long
+}
+
+@Dao
+interface ExpenseDao {
+    @Query("SELECT * FROM expenses WHERE motorcycleId = :motorcycleId ORDER BY dateEpochDay DESC, id DESC")
+    fun observeForMotorcycle(motorcycleId: Long): Flow<List<ExpenseEntity>>
+
+    @Insert
+    suspend fun insert(expense: ExpenseEntity): Long
+}
+
+@Dao
+interface FuelDao {
+    @Query("SELECT * FROM fuel_entries WHERE motorcycleId = :motorcycleId ORDER BY dateEpochDay DESC, id DESC")
+    fun observeForMotorcycle(motorcycleId: Long): Flow<List<FuelEntryEntity>>
+
+    @Insert
+    suspend fun insert(entry: FuelEntryEntity): Long
+}
+
+@Dao
+interface LoanDao {
+    @Query("SELECT * FROM loans WHERE motorcycleId = :motorcycleId LIMIT 1")
+    fun observeForMotorcycle(motorcycleId: Long): Flow<LoanEntity?>
+
+    @Query("SELECT * FROM loans WHERE motorcycleId = :motorcycleId LIMIT 1")
+    suspend fun getForMotorcycle(motorcycleId: Long): LoanEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(loan: LoanEntity): Long
+
+    @Update
+    suspend fun update(loan: LoanEntity)
+
+    @Query("SELECT * FROM loan_payments WHERE loanId = :loanId ORDER BY installmentNumber")
+    fun observePayments(loanId: Long): Flow<List<LoanPaymentEntity>>
+
+    @Query("SELECT * FROM loan_payments WHERE loanId = :loanId ORDER BY installmentNumber")
+    suspend fun getPayments(loanId: Long): List<LoanPaymentEntity>
+
+    @Insert
+    suspend fun insertPayments(payments: List<LoanPaymentEntity>)
+
+    @Update
+    suspend fun updatePayment(payment: LoanPaymentEntity)
 }

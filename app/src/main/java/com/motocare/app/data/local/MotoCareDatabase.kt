@@ -3,9 +3,13 @@ package com.motocare.app.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.motocare.app.data.local.dao.MaintenanceDao
+import com.motocare.app.data.local.dao.ExpenseDao
+import com.motocare.app.data.local.dao.FuelDao
+import com.motocare.app.data.local.dao.LoanDao
 import com.motocare.app.data.local.dao.MotorcycleDao
 import com.motocare.app.data.local.dao.OdometerDao
 import com.motocare.app.data.local.dao.PhaseTwoDao
+import com.motocare.app.data.local.dao.ServiceDao
 import com.motocare.app.data.local.entity.AttachmentReferenceEntity
 import com.motocare.app.data.local.entity.CoveragePlanEntity
 import com.motocare.app.data.local.entity.ExpenseEntity
@@ -46,4 +50,8 @@ abstract class MotoCareDatabase : RoomDatabase() {
     abstract fun odometerDao(): OdometerDao
     abstract fun maintenanceDao(): MaintenanceDao
     abstract fun phaseTwoDao(): PhaseTwoDao
+    abstract fun serviceDao(): ServiceDao
+    abstract fun expenseDao(): ExpenseDao
+    abstract fun fuelDao(): FuelDao
+    abstract fun loanDao(): LoanDao
 }

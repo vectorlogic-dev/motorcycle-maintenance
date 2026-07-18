@@ -7,6 +7,7 @@ import com.motocare.app.data.local.entity.LoanEntity
 import com.motocare.app.data.local.entity.MaintenanceScheduleEntity
 import com.motocare.app.data.local.entity.MotorcycleEntity
 import com.motocare.app.data.local.entity.OdometerEntryEntity
+import com.motocare.app.data.local.entity.LoanPaymentEntity
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
@@ -53,7 +54,7 @@ class SampleDataRepository @Inject constructor(private val database: MotoCareDat
                 )
             },
         )
-        database.phaseTwoDao().insertLoan(
+        val loanId = database.phaseTwoDao().insertLoan(
             LoanEntity(
                 motorcycleId = id,
                 downPaymentCentavos = 1_000_000,
@@ -63,6 +64,15 @@ class SampleDataRepository @Inject constructor(private val database: MotoCareDat
                 rebateCondition = "PHP 200 rebate when paid on time; effective on-time payment PHP 8,200",
                 startEpochDay = today.toEpochDay(),
             ),
+        )
+        database.loanDao().insertPayments(
+            (1..12).map { number ->
+                LoanPaymentEntity(
+                    loanId = loanId,
+                    installmentNumber = number,
+                    dueEpochDay = today.plusMonths(number.toLong()).toEpochDay(),
+                )
+            },
         )
         database.phaseTwoDao().insertCoverage(
             CoveragePlanEntity(

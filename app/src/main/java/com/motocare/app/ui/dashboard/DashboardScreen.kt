@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.LocalGasStation
 import androidx.compose.material.icons.outlined.LocalParking
+import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.ReportProblem
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -38,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.domain.model.MaintenanceStatus
+import com.motocare.app.util.asDisplayDate
+import com.motocare.app.util.asPeso
 import kotlin.math.max
 
 @Composable
@@ -46,6 +49,11 @@ fun DashboardScreen(
     onAddOdometer: () -> Unit,
     onManageMotorcycles: () -> Unit,
     onMaintenance: () -> Unit,
+    onAddService: () -> Unit,
+    onAddFuel: () -> Unit,
+    onAddParking: () -> Unit,
+    onAddExpense: () -> Unit,
+    onLoan: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -80,9 +88,11 @@ fun DashboardScreen(
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             QuickAction("Odometer", Icons.Outlined.Add, onAddOdometer)
             QuickAction("Maintenance", Icons.Outlined.Build, onMaintenance)
-            QuickAction("Fuel", Icons.Outlined.LocalGasStation, {}, enabled = false)
-            QuickAction("Parking", Icons.Outlined.LocalParking, {}, enabled = false)
-            QuickAction("Expense", Icons.AutoMirrored.Outlined.ReceiptLong, {}, enabled = false)
+            QuickAction("Service", Icons.AutoMirrored.Outlined.ReceiptLong, onAddService)
+            QuickAction("Fuel", Icons.Outlined.LocalGasStation, onAddFuel)
+            QuickAction("Parking", Icons.Outlined.LocalParking, onAddParking)
+            QuickAction("Expense", Icons.AutoMirrored.Outlined.ReceiptLong, onAddExpense)
+            QuickAction("Loan", Icons.Outlined.Payments, onLoan)
             QuickAction("Issue", Icons.Outlined.ReportProblem, {}, enabled = false)
         }
         Text("Maintenance", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
@@ -101,8 +111,26 @@ fun DashboardScreen(
         state.coverage?.let {
             InfoCard("Free maintenance coverage", "${max(0, it.remainingDays)} days or ${"%,d".format(max(0, it.remainingKm))} km remaining — whichever comes first")
         }
-        state.loanSummary?.let { InfoCard("Financing", it) }
-        InfoCard("This month", "Fuel —  •  Parking —  •  Total —\nExpense tracking arrives in Phase 2.")
+        state.loan?.let {
+            InfoCard(
+                "Financing",
+                "${it.remainingPayments} payments remaining" + (it.nextPaymentDate?.let { date -> " • next ${date.asDisplayDate()}" } ?: "") +
+                    "\nPaid ${it.totalPaidCentavos.asPeso()} • rebates ${it.rebatesEarnedCentavos.asPeso()}",
+            )
+        }
+        InfoCard(
+            "This month",
+            "Fuel ${state.monthFuelCentavos.asPeso()} • Parking ${state.monthParkingCentavos.asPeso()} • Total ${state.cost.monthCentavos.asPeso()}" +
+                (state.cost.costPerKmCentavos?.let { "\nOwnership cost ${it.toLong().asPeso()}/km" } ?: ""),
+        )
+        InfoCard(
+            "Ownership costs",
+            "Today ${state.cost.todayCentavos.asPeso()} • Year ${state.cost.yearCentavos.asPeso()} • Total ${state.cost.totalCentavos.asPeso()}" +
+                (state.cost.costPerKmCentavos?.let { total ->
+                    "\nPer km ${total.toLong().asPeso()} • fuel ${state.cost.fuelCostPerKmCentavos?.toLong()?.asPeso() ?: "—"} • maintenance ${state.cost.maintenanceCostPerKmCentavos?.toLong()?.asPeso() ?: "—"}"
+                } ?: ""),
+        )
+        state.fuel.averageKmPerLitre?.let { InfoCard("Fuel economy", "${"%.1f".format(it)} km/L average") }
         Spacer(Modifier.height(8.dp))
     }
 }

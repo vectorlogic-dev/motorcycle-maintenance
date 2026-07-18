@@ -4,9 +4,13 @@ import android.content.Context
 import androidx.room.Room
 import com.motocare.app.data.local.MotoCareDatabase
 import com.motocare.app.data.local.dao.MaintenanceDao
+import com.motocare.app.data.local.dao.ExpenseDao
+import com.motocare.app.data.local.dao.FuelDao
+import com.motocare.app.data.local.dao.LoanDao
 import com.motocare.app.data.local.dao.MotorcycleDao
 import com.motocare.app.data.local.dao.OdometerDao
 import com.motocare.app.data.local.dao.PhaseTwoDao
+import com.motocare.app.data.local.dao.ServiceDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -26,4 +30,8 @@ object AppModule {
     @Provides fun odometerDao(db: MotoCareDatabase): OdometerDao = db.odometerDao()
     @Provides fun maintenanceDao(db: MotoCareDatabase): MaintenanceDao = db.maintenanceDao()
     @Provides fun phaseTwoDao(db: MotoCareDatabase): PhaseTwoDao = db.phaseTwoDao()
+    @Provides fun serviceDao(db: MotoCareDatabase): ServiceDao = db.serviceDao()
+    @Provides fun expenseDao(db: MotoCareDatabase): ExpenseDao = db.expenseDao()
+    @Provides fun fuelDao(db: MotoCareDatabase): FuelDao = db.fuelDao()
+    @Provides fun loanDao(db: MotoCareDatabase): LoanDao = db.loanDao()
 }

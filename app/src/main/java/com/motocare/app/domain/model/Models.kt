@@ -32,3 +32,42 @@ data class CoverageAssessment(
     val expiredByDistance: Boolean,
     val estimatedEndDate: LocalDate?,
 )
+
+data class FuelEconomySegment(
+    val fromOdometerKm: Long,
+    val toOdometerKm: Long,
+    val litres: Double,
+    val kilometresPerLitre: Double,
+    val costPerKmCentavos: Double,
+)
+
+data class FuelSummary(
+    val segments: List<FuelEconomySegment> = emptyList(),
+    val averageKmPerLitre: Double? = null,
+    val bestKmPerLitre: Double? = null,
+    val worstKmPerLitre: Double? = null,
+    val fuelCostPerKmCentavos: Double? = null,
+    val monthlySpendingCentavos: Map<String, Long> = emptyMap(),
+)
+
+data class LoanSummary(
+    val paymentsMade: Int,
+    val remainingPayments: Int,
+    val rebatesEarnedCentavos: Long,
+    val rebatesLostCentavos: Long,
+    val totalPaidCentavos: Long,
+    val projectedFinancingCostCentavos: Long,
+    val nextPaymentDate: LocalDate?,
+    val daysUntilDue: Long?,
+    val estimatedPayoffDate: LocalDate?,
+)
+
+data class CostSummary(
+    val todayCentavos: Long,
+    val monthCentavos: Long,
+    val yearCentavos: Long,
+    val totalCentavos: Long,
+    val costPerKmCentavos: Double?,
+    val fuelCostPerKmCentavos: Double?,
+    val maintenanceCostPerKmCentavos: Double?,
+)
