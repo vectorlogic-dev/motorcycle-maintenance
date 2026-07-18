@@ -25,4 +25,9 @@ class ProblemRepository @Inject constructor(private val database: MotoCareDataba
     }
 
     suspend fun unresolved(): List<ProblemLogEntity> = database.phaseThreeDao().getAllUnresolvedProblems()
+
+    suspend fun delete(problem: ProblemLogEntity) = database.withTransaction {
+        database.phaseThreeDao().deleteAttachments("PROBLEM", problem.id)
+        database.phaseThreeDao().deleteProblem(problem)
+    }
 }

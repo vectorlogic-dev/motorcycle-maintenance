@@ -48,6 +48,10 @@ import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.asPeso
 import com.motocare.app.ui.components.MotoCareEmptyState
 import com.motocare.app.ui.components.MotoCareSummaryCard
+import com.motocare.app.ui.components.MotoCareDateField
+import com.motocare.app.ui.components.MotoCareDeleteDialog
+import com.motocare.app.ui.components.MotoCareRecordActions
+import com.motocare.app.data.local.entity.ExpenseEntity
 import java.time.LocalDate
 
 private val expenseCategories = listOf("FUEL", "PARKING", "MAINTENANCE", "REPAIRS", "REGISTRATION", "INSURANCE", "ACCESSORIES", "LOAN_PAYMENT", "FINES", "OTHER")
@@ -57,6 +61,8 @@ private val expenseCategories = listOf("FUEL", "PARKING", "MAINTENANCE", "REPAIR
 fun ExpenseScreen(onBack: () -> Unit, startWithParking: Boolean = false, viewModel: ExpenseViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<ExpenseEntity?>(null) }
+    var deleteTarget by remember { mutableStateOf<ExpenseEntity?>(null) }
     var showParkingDefault by remember { mutableStateOf(false) }
     var parkingHandled by remember { mutableStateOf(false) }
     if (startWithParking && !parkingHandled && state.motorcycle != null) {
@@ -102,18 +108,36 @@ fun ExpenseScreen(onBack: () -> Unit, startWithParking: Boolean = false, viewMod
                             Text(LocalDate.ofEpochDay(expense.dateEpochDay).asDisplayDate())
                             if (expense.description.isNotBlank()) Text(expense.description)
                         }
-                        Text(expense.amountCentavos.asPeso(), color = MaterialTheme.colorScheme.primary)
+                        Column {
+                            Text(expense.amountCentavos.asPeso(), color = MaterialTheme.colorScheme.primary)
+                            MotoCareRecordActions("expense", { editing = expense }, { deleteTarget = expense })
+                        }
                     }
                 }
             }
         }
     }
-    if (showAdd) AddExpenseDialog(onDismiss = { showAdd = false }, onSave = { viewModel.add(it) { showAdd = false } })
+    if (showAdd || editing != null) AddExpenseDialog(
+        existing = editing,
+        onDismiss = { showAdd = false; editing = null },
+        onSave = { input ->
+            val existing = editing
+            if (existing == null) viewModel.add(input) { showAdd = false } else viewModel.update(existing, input) { editing = null }
+        },
+    )
     if (showParkingDefault) ParkingDefaultDialog(
         current = state.defaultParkingCentavos,
         onDismiss = { showParkingDefault = false },
         onSave = { viewModel.setParkingDefault(it); showParkingDefault = false },
     )
+    deleteTarget?.let { expense ->
+        MotoCareDeleteDialog(
+            title = "Delete expense?",
+            detail = "Delete this ${expense.category.lowercase().replace('_', ' ')} expense of ${expense.amountCentavos.asPeso()}?",
+            onConfirm = { viewModel.delete(expense); deleteTarget = null },
+            onDismiss = { deleteTarget = null },
+        )
+    }
 }
 
 @Composable
@@ -129,15 +153,15 @@ private fun ParkingDefaultDialog(current: Long, onDismiss: () -> Unit, onSave: (
 }
 
 @Composable
-private fun AddExpenseDialog(onDismiss: () -> Unit, onSave: (ExpenseInput) -> Unit) {
-    var date by remember { mutableStateOf(LocalDate.now().toString()) }
-    var category by remember { mutableStateOf("OTHER") }
-    var amount by remember { mutableStateOf("") }
-    var km by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var receipt by remember { mutableStateOf<String?>(null) }
-    var payment by remember { mutableStateOf("") }
-    var vendor by remember { mutableStateOf("") }
+private fun AddExpenseDialog(existing: ExpenseEntity?, onDismiss: () -> Unit, onSave: (ExpenseInput) -> Unit) {
+    var date by remember(existing) { mutableStateOf(existing?.dateEpochDay?.let(LocalDate::ofEpochDay) ?: LocalDate.now()) }
+    var category by remember(existing) { mutableStateOf(existing?.category ?: "OTHER") }
+    var amount by remember(existing) { mutableStateOf(existing?.amountCentavos?.let { "%.2f".format(it / 100.0) }.orEmpty()) }
+    var km by remember(existing) { mutableStateOf(existing?.odometerKm?.toString().orEmpty()) }
+    var description by remember(existing) { mutableStateOf(existing?.description.orEmpty()) }
+    var receipt by remember(existing) { mutableStateOf(existing?.receiptUri) }
+    var payment by remember(existing) { mutableStateOf(existing?.paymentMethod.orEmpty()) }
+    var vendor by remember(existing) { mutableStateOf(existing?.vendor.orEmpty()) }
     val context = LocalContext.current
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -147,10 +171,10 @@ private fun AddExpenseDialog(onDismiss: () -> Unit, onSave: (ExpenseInput) -> Un
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add expense") },
+        title = { Text(if (existing == null) "Add expense" else "Edit expense") },
         text = {
             Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(date, { date = it }, label = { Text("Date (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
+                MotoCareDateField(date, { date = it }, "Expense date")
                 Text("Category", fontWeight = FontWeight.SemiBold)
                 expenseCategories.chunked(3).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -167,8 +191,8 @@ private fun AddExpenseDialog(onDismiss: () -> Unit, onSave: (ExpenseInput) -> Un
         },
         confirmButton = {
             TextButton(
-                enabled = amount.toBigDecimalOrNull() != null && runCatching { LocalDate.parse(date) }.isSuccess,
-                onClick = { onSave(ExpenseInput(date, category, amount, km, description, receipt, payment, vendor)) },
+                enabled = amount.toBigDecimalOrNull() != null,
+                onClick = { onSave(ExpenseInput(date.toString(), category, amount, km, description, receipt, payment, vendor)) },
             ) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },

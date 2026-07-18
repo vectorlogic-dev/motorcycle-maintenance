@@ -44,6 +44,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.data.local.entity.ProblemLogEntity
 import com.motocare.app.ui.components.MotoCareEmptyState
 import com.motocare.app.ui.components.MotoCareStatusPill
+import com.motocare.app.ui.components.MotoCareDateField
+import com.motocare.app.ui.components.MotoCareDeleteDialog
+import com.motocare.app.ui.components.MotoCareRecordActions
 import com.motocare.app.ui.theme.motoCareStatusColors
 import com.motocare.app.util.asDisplayDate
 import java.time.LocalDate
@@ -55,6 +58,8 @@ private val severities = listOf("LOW", "MEDIUM", "HIGH", "CRITICAL")
 fun ProblemScreen(onBack: () -> Unit, viewModel: ProblemViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var adding by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<ProblemLogEntity?>(null) }
+    var deleteTarget by remember { mutableStateOf<ProblemLogEntity?>(null) }
     var resolving by remember { mutableStateOf<ProblemLogEntity?>(null) }
     Scaffold(
         topBar = { TopAppBar(title = { Text("Problems & symptoms") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) },
@@ -86,26 +91,42 @@ fun ProblemScreen(onBack: () -> Unit, viewModel: ProblemViewModel = hiltViewMode
                         Text(LocalDate.ofEpochDay(problem.dateEpochDay).asDisplayDate() + (problem.odometerKm?.let { " • $it km" } ?: ""))
                         if (problem.description.isNotBlank()) Text(problem.description)
                         if (problem.resolved && problem.resolution.isNotBlank()) Text("Resolution: ${problem.resolution}")
+                        MotoCareRecordActions("issue", { editing = problem }, { deleteTarget = problem })
                     }
                 }
             }
         }
     }
-    if (adding) AddProblemDialog(state.motorcycle?.currentOdometerKm ?: 0, { adding = false }) { viewModel.add(it) { adding = false } }
+    if (adding || editing != null) AddProblemDialog(
+        existing = editing,
+        currentKm = state.motorcycle?.currentOdometerKm ?: 0,
+        onDismiss = { adding = false; editing = null },
+    ) { input ->
+        val existing = editing
+        if (existing == null) viewModel.add(input) { adding = false } else viewModel.update(existing, input) { editing = null }
+    }
     resolving?.let { problem -> ResolveDialog(problem, { resolving = null }) { viewModel.resolve(problem, it); resolving = null } }
+    deleteTarget?.let { problem ->
+        MotoCareDeleteDialog(
+            title = "Delete issue?",
+            detail = "Delete \"${problem.symptom}\" and its stored media reference?",
+            onConfirm = { viewModel.delete(problem); deleteTarget = null },
+            onDismiss = { deleteTarget = null },
+        )
+    }
 }
 
 @Composable
-private fun AddProblemDialog(currentKm: Long, onDismiss: () -> Unit, onSave: (ProblemInput) -> Unit) {
-    var date by remember { mutableStateOf(LocalDate.now().toString()) }; var km by remember { mutableStateOf(currentKm.toString()) }
-    var severity by remember { mutableStateOf("MEDIUM") }; var symptom by remember { mutableStateOf("") }; var description by remember { mutableStateOf("") }; var media by remember { mutableStateOf<String?>(null) }
+private fun AddProblemDialog(existing: ProblemLogEntity?, currentKm: Long, onDismiss: () -> Unit, onSave: (ProblemInput) -> Unit) {
+    var date by remember(existing) { mutableStateOf(existing?.dateEpochDay?.let(LocalDate::ofEpochDay) ?: LocalDate.now()) }; var km by remember(existing) { mutableStateOf(existing?.odometerKm?.toString() ?: currentKm.toString()) }
+    var severity by remember(existing) { mutableStateOf(existing?.severity ?: "MEDIUM") }; var symptom by remember(existing) { mutableStateOf(existing?.symptom.orEmpty()) }; var description by remember(existing) { mutableStateOf(existing?.description.orEmpty()) }; var media by remember(existing) { mutableStateOf(existing?.mediaUri) }
     val context = LocalContext.current
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) { runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }; media = uri.toString() }
     }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Log issue") }, text = {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (existing == null) "Log issue" else "Edit issue") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(date, { date = it }, label = { Text("Date (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
+            MotoCareDateField(date, { date = it }, "Issue date")
             OutlinedTextField(km, { km = it.filter(Char::isDigit) }, label = { Text("Odometer (km)") }, modifier = Modifier.fillMaxWidth())
             severities.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) { row.forEach { option -> AssistChip(onClick = { severity = option }, label = { Text(if (severity == option) "✓ ${option.lowercase()}" else option.lowercase()) }) } }
@@ -114,7 +135,7 @@ private fun AddProblemDialog(currentKm: Long, onDismiss: () -> Unit, onSave: (Pr
             OutlinedTextField(description, { description = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
             TextButton(onClick = { picker.launch(arrayOf("image/*", "video/*")) }) { Text(if (media == null) "Attach photo or video" else "Media selected") }
         }
-    }, confirmButton = { TextButton(enabled = symptom.isNotBlank() && runCatching { LocalDate.parse(date) }.isSuccess, onClick = { onSave(ProblemInput(date, km, severity, symptom, description, media)) }) { Text("Save") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
+    }, confirmButton = { TextButton(enabled = symptom.isNotBlank(), onClick = { onSave(ProblemInput(date.toString(), km, severity, symptom, description, media)) }) { Text("Save") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
 }
 
 @Composable

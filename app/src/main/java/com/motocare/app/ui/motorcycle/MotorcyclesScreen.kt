@@ -54,6 +54,7 @@ import com.motocare.app.ui.components.MotoCareIconBadge
 import java.time.LocalDate
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.toCentavosOrNull
+import com.motocare.app.ui.components.MotoCareOptionalDateField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -130,7 +131,7 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
     var model by remember(existing) { mutableStateOf(existing?.model.orEmpty()) }
     var variant by remember(existing) { mutableStateOf(existing?.variant.orEmpty()) }
     var year by remember(existing) { mutableStateOf(existing?.year?.toString().orEmpty()) }
-    var purchaseDate by remember(existing) { mutableStateOf(existing?.purchaseDateEpochDay?.let { LocalDate.ofEpochDay(it).toString() }.orEmpty()) }
+    var purchaseDate by remember(existing) { mutableStateOf(existing?.purchaseDateEpochDay?.let(LocalDate::ofEpochDay)) }
     var purchaseType by remember(existing) { mutableStateOf(existing?.purchaseType ?: "UNKNOWN") }
     var purchasePrice by remember(existing) { mutableStateOf(existing?.purchasePriceCentavos?.let { "%.2f".format(it / 100.0) }.orEmpty()) }
     var seller by remember(existing) { mutableStateOf(existing?.seller.orEmpty()) }
@@ -139,8 +140,8 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
     var plate by remember(existing) { mutableStateOf(existing?.plateNumber.orEmpty()) }
     var engine by remember(existing) { mutableStateOf(existing?.engineNumber.orEmpty()) }
     var chassis by remember(existing) { mutableStateOf(existing?.chassisNumber.orEmpty()) }
-    var registration by remember(existing) { mutableStateOf(existing?.registrationExpiryEpochDay?.let { LocalDate.ofEpochDay(it).toString() }.orEmpty()) }
-    var insurance by remember(existing) { mutableStateOf(existing?.insuranceExpiryEpochDay?.let { LocalDate.ofEpochDay(it).toString() }.orEmpty()) }
+    var registration by remember(existing) { mutableStateOf(existing?.registrationExpiryEpochDay?.let(LocalDate::ofEpochDay)) }
+    var insurance by remember(existing) { mutableStateOf(existing?.insuranceExpiryEpochDay?.let(LocalDate::ofEpochDay)) }
     var financed by remember(existing) { mutableStateOf(existing?.isFinanced ?: false) }
     var notes by remember(existing) { mutableStateOf(existing?.notes.orEmpty()) }
     var photoUri by remember(existing) { mutableStateOf(existing?.photoUri.orEmpty()) }
@@ -153,7 +154,6 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
         }
     }
     val valid = name.isNotBlank() && maker.isNotBlank() && model.isNotBlank() && initialKm.toLongOrNull() != null
-    fun epochOrNull(value: String): Long? = runCatching { LocalDate.parse(value).toEpochDay() }.getOrNull()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -165,7 +165,7 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
                 Field(model, { model = it }, "Model")
                 Field(variant, { variant = it }, "Variant")
                 Field(year, { year = it.filter(Char::isDigit) }, "Year")
-                Field(purchaseDate, { purchaseDate = it }, "Purchase date (YYYY-MM-DD)")
+                MotoCareOptionalDateField(purchaseDate, { purchaseDate = it }, "Purchase date")
                 Text("Purchase type")
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf("CASH", "FINANCED").forEach { type ->
@@ -177,8 +177,8 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
                 Row { Checkbox(secondHand, { secondHand = it }); Text("Bought second-hand", Modifier.padding(top = 12.dp)) }
                 if (existing == null) Field(initialKm, { initialKm = it.filter(Char::isDigit) }, "Initial odometer (km)")
                 Field(plate, { plate = it }, "Plate number")
-                Field(registration, { registration = it }, "Registration expiry (YYYY-MM-DD)")
-                Field(insurance, { insurance = it }, "Insurance expiry (YYYY-MM-DD)")
+                MotoCareOptionalDateField(registration, { registration = it }, "Registration expiry")
+                MotoCareOptionalDateField(insurance, { insurance = it }, "Insurance expiry")
                 Row { Checkbox(financed, { financed = it }); Text("Financed", Modifier.padding(top = 12.dp)) }
                 TextButton(onClick = { showSensitive = !showSensitive }) { Text(if (showSensitive) "Hide sensitive identifiers" else "Show sensitive identifiers") }
                 if (showSensitive) {
@@ -200,11 +200,11 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
                     )
                     onSave(base.copy(
                         name = name.trim(), manufacturer = maker.trim(), model = model.trim(), variant = variant.trim(),
-                        year = year.toIntOrNull(), purchaseDateEpochDay = epochOrNull(purchaseDate),
+                        year = year.toIntOrNull(), purchaseDateEpochDay = purchaseDate?.toEpochDay(),
                         purchaseType = purchaseType, purchasePriceCentavos = purchasePrice.toCentavosOrNull(), seller = seller.trim(), secondHand = secondHand,
                         initialOdometerKm = if (existing == null) initialKm.toLong() else base.initialOdometerKm,
                         plateNumber = plate.trim(), engineNumber = engine.trim(), chassisNumber = chassis.trim(),
-                        registrationExpiryEpochDay = epochOrNull(registration), insuranceExpiryEpochDay = epochOrNull(insurance),
+                        registrationExpiryEpochDay = registration?.toEpochDay(), insuranceExpiryEpochDay = insurance?.toEpochDay(),
                         isFinanced = financed, notes = notes.trim(), photoUri = photoUri.trim().ifEmpty { null },
                     ))
                 },

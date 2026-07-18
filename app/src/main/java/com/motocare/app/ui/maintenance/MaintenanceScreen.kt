@@ -43,6 +43,7 @@ import com.motocare.app.data.local.entity.MaintenanceScheduleEntity
 import com.motocare.app.domain.model.MaintenanceStatus
 import com.motocare.app.ui.components.MotoCareEmptyState
 import com.motocare.app.ui.components.MotoCareStatusPill
+import com.motocare.app.ui.components.MotoCareOptionalDateField
 import com.motocare.app.ui.theme.motoCareStatusColors
 import com.motocare.app.ui.dashboard.ScheduleRow
 import java.time.LocalDate
@@ -136,7 +137,7 @@ private fun ScheduleDialog(existing: MaintenanceScheduleEntity?, onDismiss: () -
     var description by remember(existing) { mutableStateOf(existing?.description.orEmpty()) }
     var intervalKm by remember(existing) { mutableStateOf(existing?.intervalKm?.toString().orEmpty()) }
     var intervalDays by remember(existing) { mutableStateOf(existing?.intervalDays?.toString().orEmpty()) }
-    var lastDate by remember(existing) { mutableStateOf(existing?.lastServiceEpochDay?.let { LocalDate.ofEpochDay(it).toString() }.orEmpty()) }
+    var lastDate by remember(existing) { mutableStateOf(existing?.lastServiceEpochDay?.let(LocalDate::ofEpochDay)) }
     var lastKm by remember(existing) { mutableStateOf(existing?.lastServiceOdometerKm?.toString().orEmpty()) }
     var leadDays by remember(existing) { mutableStateOf(existing?.reminderLeadDays?.toString() ?: "14") }
     var leadKm by remember(existing) { mutableStateOf(existing?.reminderLeadKm?.toString() ?: "500") }
@@ -151,7 +152,7 @@ private fun ScheduleDialog(existing: MaintenanceScheduleEntity?, onDismiss: () -
                 NumberField(intervalKm, { intervalKm = it }, "Kilometres")
                 NumberField(intervalDays, { intervalDays = it }, "Days")
                 Text("Last completed", fontWeight = FontWeight.SemiBold)
-                Field(lastDate, { lastDate = it }, "Date (YYYY-MM-DD)")
+                MotoCareOptionalDateField(lastDate, { lastDate = it }, "Last service date")
                 NumberField(lastKm, { lastKm = it }, "Odometer (km)")
                 Text("Reminder lead", fontWeight = FontWeight.SemiBold)
                 NumberField(leadDays, { leadDays = it }, "Days before")
@@ -162,7 +163,7 @@ private fun ScheduleDialog(existing: MaintenanceScheduleEntity?, onDismiss: () -
         confirmButton = {
             TextButton(
                 enabled = name.isNotBlank() && (intervalKm.toLongOrNull() != null || intervalDays.toIntOrNull() != null),
-                onClick = { onSave(ScheduleInput(existing, name, description, intervalKm, intervalDays, lastDate, lastKm, leadDays, leadKm)) },
+                onClick = { onSave(ScheduleInput(existing, name, description, intervalKm, intervalDays, lastDate?.toString().orEmpty(), lastKm, leadDays, leadKm)) },
             ) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },

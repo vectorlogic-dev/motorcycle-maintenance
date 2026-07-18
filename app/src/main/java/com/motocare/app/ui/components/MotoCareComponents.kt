@@ -12,10 +12,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -176,6 +180,39 @@ fun MotoCareStatusPill(
 }
 
 @Composable
+fun MotoCareRecordActions(
+    recordLabel: String,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier) {
+        IconButton(onClick = onEdit) {
+            Icon(Icons.Outlined.Edit, contentDescription = "Edit $recordLabel")
+        }
+        IconButton(onClick = onDelete) {
+            Icon(Icons.Outlined.DeleteOutline, contentDescription = "Delete $recordLabel")
+        }
+    }
+}
+
+@Composable
+fun MotoCareDeleteDialog(
+    title: String,
+    detail: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(detail) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Delete") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
 fun MotoCareEmptyState(
     title: String,
     detail: String,
@@ -250,6 +287,62 @@ fun MotoCareDateField(
                 ) { Text("OK") }
             },
             dismissButton = { TextButton(onClick = { showPicker = false }) { Text("Cancel") } },
+        ) { DatePicker(state = pickerState) }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MotoCareOptionalDateField(
+    date: LocalDate?,
+    onDateSelected: (LocalDate?) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    var showPicker by remember { mutableStateOf(false) }
+    val displayValue = date?.asDisplayDate().orEmpty()
+    Box(modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = displayValue,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            placeholder = { Text("Not set") },
+            trailingIcon = { Icon(Icons.Outlined.CalendarMonth, contentDescription = null) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Box(
+            Modifier.matchParentSize()
+                .clickable(onClick = { showPicker = true })
+                .semantics {
+                    role = Role.Button
+                    contentDescription = "$label, ${displayValue.ifBlank { "not set" }}. Choose date"
+                },
+        )
+    }
+    if (showPicker) {
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = (date ?: LocalDate.now()).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(
+                    enabled = pickerState.selectedDateMillis != null,
+                    onClick = {
+                        pickerState.selectedDateMillis?.let { millis ->
+                            onDateSelected(Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate())
+                        }
+                        showPicker = false
+                    },
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                Row {
+                    if (date != null) TextButton(onClick = { onDateSelected(null); showPicker = false }) { Text("Clear") }
+                    TextButton(onClick = { showPicker = false }) { Text("Cancel") }
+                }
+            },
         ) { DatePicker(state = pickerState) }
     }
 }

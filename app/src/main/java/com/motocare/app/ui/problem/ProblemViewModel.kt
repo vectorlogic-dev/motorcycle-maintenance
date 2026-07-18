@@ -33,16 +33,23 @@ class ProblemViewModel @Inject constructor(
     val uiState = combine(selected, problems) { bike, issues -> ProblemUiState(bike, issues) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProblemUiState())
 
-    fun add(input: ProblemInput, onSaved: () -> Unit) {
+    fun add(input: ProblemInput, onSaved: () -> Unit) = save(input, null, onSaved)
+
+    fun update(existing: ProblemLogEntity, input: ProblemInput, onSaved: () -> Unit) = save(input, existing, onSaved)
+
+    private fun save(input: ProblemInput, existing: ProblemLogEntity?, onSaved: () -> Unit) {
         val bike = uiState.value.motorcycle ?: return
         val date = runCatching { LocalDate.parse(input.date) }.getOrNull() ?: return
         viewModelScope.launch {
             repository.save(
-                ProblemLogEntity(
+                (existing ?: ProblemLogEntity(
                     motorcycleId = bike.id, dateEpochDay = date.toEpochDay(), odometerKm = input.odometerKm.toLongOrNull(),
                     severity = input.severity, symptom = input.symptom.trim(), description = input.description.trim(), mediaUri = input.mediaUri,
+                )).copy(
+                    dateEpochDay = date.toEpochDay(), odometerKm = input.odometerKm.toLongOrNull(), severity = input.severity,
+                    symptom = input.symptom.trim(), description = input.description.trim(), mediaUri = input.mediaUri,
                 ),
-                input.mediaUri,
+                input.mediaUri?.takeIf { it != existing?.mediaUri },
             )
             onSaved()
         }
@@ -51,4 +58,6 @@ class ProblemViewModel @Inject constructor(
     fun resolve(problem: ProblemLogEntity, resolution: String) = viewModelScope.launch {
         repository.save(problem.copy(resolved = true, resolution = resolution.trim()), null)
     }
+
+    fun delete(problem: ProblemLogEntity) = viewModelScope.launch { repository.delete(problem) }
 }

@@ -78,4 +78,27 @@ class ServiceViewModel @Inject constructor(
             onSaved()
         }
     }
+
+    fun update(existing: ServiceRecordEntity, input: ServiceInput, onSaved: () -> Unit) {
+        val date = runCatching { LocalDate.parse(input.date) }.getOrNull() ?: return
+        val odometer = input.odometerKm.toLongOrNull() ?: return
+        val record = existing.copy(
+            serviceEpochDay = date.toEpochDay(),
+            odometerKm = odometer,
+            dealerOrMechanic = input.mechanic.trim(),
+            labourCostCentavos = input.labourCost.toCentavosOrNull() ?: 0,
+            partsCostCentavos = input.partsCost.toCentavosOrNull() ?: 0,
+            partsReplaced = input.partsReplaced.trim(),
+            notes = input.notes.trim(),
+            nextRecommendedEpochDay = input.nextDate.takeIf { it.isNotBlank() }?.let { LocalDate.parse(it).toEpochDay() },
+            nextRecommendedOdometerKm = input.nextOdometerKm.toLongOrNull(),
+        )
+        viewModelScope.launch { repository.update(record, input.scheduleIds, input.receiptUris); onSaved() }
+    }
+
+    fun loadItemIds(recordId: Long, onLoaded: (Set<Long>) -> Unit) = viewModelScope.launch {
+        onLoaded(repository.itemIds(recordId).toSet())
+    }
+
+    fun delete(record: ServiceRecordEntity) = viewModelScope.launch { repository.delete(record) }
 }

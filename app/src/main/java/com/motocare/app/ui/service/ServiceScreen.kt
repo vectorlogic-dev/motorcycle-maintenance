@@ -44,9 +44,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.data.local.entity.MaintenanceScheduleEntity
+import com.motocare.app.data.local.entity.ServiceRecordEntity
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.asPeso
 import com.motocare.app.ui.components.MotoCareEmptyState
+import com.motocare.app.ui.components.MotoCareDateField
+import com.motocare.app.ui.components.MotoCareOptionalDateField
+import com.motocare.app.ui.components.MotoCareDeleteDialog
+import com.motocare.app.ui.components.MotoCareRecordActions
 import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,6 +59,9 @@ import java.time.LocalDate
 fun ServiceScreen(onBack: () -> Unit, viewModel: ServiceViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<ServiceRecordEntity?>(null) }
+    var editingItemIds by remember { mutableStateOf(emptySet<Long>()) }
+    var deleteTarget by remember { mutableStateOf<ServiceRecordEntity?>(null) }
     Scaffold(
         topBar = { TopAppBar(title = { Text("Service history") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) },
         floatingActionButton = { if (state.motorcycle != null) FloatingActionButton({ showAdd = true }) { Icon(Icons.Outlined.Add, "Add service") } },
@@ -80,37 +88,57 @@ fun ServiceScreen(onBack: () -> Unit, viewModel: ServiceViewModel = hiltViewMode
                         if (record.dealerOrMechanic.isNotBlank()) Text(record.dealerOrMechanic)
                         if (record.partsReplaced.isNotBlank()) Text("Parts: ${record.partsReplaced}")
                         if (record.notes.isNotBlank()) Text(record.notes, style = MaterialTheme.typography.bodySmall)
+                        MotoCareRecordActions(
+                            "service record",
+                            onEdit = { viewModel.loadItemIds(record.id) { ids -> editingItemIds = ids; editing = record } },
+                            onDelete = { deleteTarget = record },
+                        )
                     }
                 }
             }
         }
     }
-    if (showAdd) AddServiceDialog(
+    if (showAdd || editing != null) AddServiceDialog(
+        existing = editing,
+        initialScheduleIds = editingItemIds,
         currentKm = state.motorcycle?.currentOdometerKm ?: 0,
         schedules = state.schedules,
-        onDismiss = { showAdd = false },
-        onSave = { viewModel.add(it) { showAdd = false } },
+        onDismiss = { showAdd = false; editing = null; editingItemIds = emptySet() },
+        onSave = { input ->
+            val existing = editing
+            if (existing == null) viewModel.add(input) { showAdd = false } else viewModel.update(existing, input) { editing = null; editingItemIds = emptySet() }
+        },
     )
+    deleteTarget?.let { record ->
+        MotoCareDeleteDialog(
+            title = "Delete service record?",
+            detail = "Delete the service from ${LocalDate.ofEpochDay(record.serviceEpochDay).asDisplayDate()}? Related maintenance status and odometer history will be recalculated.",
+            onConfirm = { viewModel.delete(record); deleteTarget = null },
+            onDismiss = { deleteTarget = null },
+        )
+    }
 }
 
 @Composable
 private fun AddServiceDialog(
+    existing: ServiceRecordEntity?,
+    initialScheduleIds: Set<Long>,
     currentKm: Long,
     schedules: List<MaintenanceScheduleEntity>,
     onDismiss: () -> Unit,
     onSave: (ServiceInput) -> Unit,
 ) {
-    var date by remember { mutableStateOf(LocalDate.now().toString()) }
-    var km by remember { mutableStateOf(currentKm.toString()) }
-    var selected by remember { mutableStateOf(emptySet<Long>()) }
-    var mechanic by remember { mutableStateOf("") }
-    var labour by remember { mutableStateOf("") }
-    var parts by remember { mutableStateOf("") }
-    var replaced by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
-    var receipts by remember { mutableStateOf(emptyList<String>()) }
-    var nextDate by remember { mutableStateOf("") }
-    var nextKm by remember { mutableStateOf("") }
+    var date by remember(existing) { mutableStateOf(existing?.serviceEpochDay?.let(LocalDate::ofEpochDay) ?: LocalDate.now()) }
+    var km by remember(existing) { mutableStateOf(existing?.odometerKm?.toString() ?: currentKm.toString()) }
+    var selected by remember(existing, initialScheduleIds) { mutableStateOf(initialScheduleIds) }
+    var mechanic by remember(existing) { mutableStateOf(existing?.dealerOrMechanic.orEmpty()) }
+    var labour by remember(existing) { mutableStateOf(existing?.labourCostCentavos?.let { "%.2f".format(it / 100.0) }.orEmpty()) }
+    var parts by remember(existing) { mutableStateOf(existing?.partsCostCentavos?.let { "%.2f".format(it / 100.0) }.orEmpty()) }
+    var replaced by remember(existing) { mutableStateOf(existing?.partsReplaced.orEmpty()) }
+    var notes by remember(existing) { mutableStateOf(existing?.notes.orEmpty()) }
+    var receipts by remember(existing) { mutableStateOf(emptyList<String>()) }
+    var nextDate by remember(existing) { mutableStateOf(existing?.nextRecommendedEpochDay?.let(LocalDate::ofEpochDay)) }
+    var nextKm by remember(existing) { mutableStateOf(existing?.nextRecommendedOdometerKm?.toString().orEmpty()) }
     val context = LocalContext.current
     val receiptPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         uris.forEach { uri -> runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } }
@@ -118,10 +146,10 @@ private fun AddServiceDialog(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add service record") },
+        title = { Text(if (existing == null) "Add service record" else "Edit service record") },
         text = {
             Column(Modifier.heightIn(max = 570.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Field(date, { date = it }, "Service date (YYYY-MM-DD)")
+                MotoCareDateField(date, { date = it }, "Service date")
                 NumberField(km, { km = it }, "Odometer (km)")
                 Text("Maintenance completed", fontWeight = FontWeight.SemiBold)
                 schedules.forEach { schedule ->
@@ -141,14 +169,14 @@ private fun AddServiceDialog(
                 TextButton(onClick = { receiptPicker.launch(arrayOf("image/*")) }) {
                     Text(if (receipts.isEmpty()) "Attach receipt photos" else "${receipts.size} receipt photo(s) selected")
                 }
-                Field(nextDate, { nextDate = it }, "Next recommended date")
+                MotoCareOptionalDateField(nextDate, { nextDate = it }, "Next recommended date")
                 NumberField(nextKm, { nextKm = it }, "Next recommended odometer")
             }
         },
         confirmButton = {
             TextButton(
-                enabled = km.toLongOrNull() != null && runCatching { LocalDate.parse(date) }.isSuccess,
-                onClick = { onSave(ServiceInput(date, km, selected, mechanic, labour, parts, replaced, notes, receipts, nextDate, nextKm)) },
+                enabled = km.toLongOrNull() != null,
+                onClick = { onSave(ServiceInput(date.toString(), km, selected, mechanic, labour, parts, replaced, notes, receipts, nextDate?.toString().orEmpty(), nextKm)) },
             ) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },

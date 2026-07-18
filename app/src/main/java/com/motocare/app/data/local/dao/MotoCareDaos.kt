@@ -56,6 +56,9 @@ interface OdometerDao {
 
     @Delete
     suspend fun delete(entry: OdometerEntryEntity)
+
+    @Query("DELETE FROM odometer_entries WHERE motorcycleId = :motorcycleId AND readingKm = :readingKm AND recordedAtEpochMillis = :recordedAtEpochMillis AND note = :note")
+    suspend fun deleteGenerated(motorcycleId: Long, readingKm: Long, recordedAtEpochMillis: Long, note: String)
 }
 
 @Dao
@@ -105,11 +108,26 @@ interface ServiceDao {
     @Query("SELECT maintenanceScheduleId FROM service_record_items WHERE serviceRecordId = :serviceRecordId")
     suspend fun itemIds(serviceRecordId: Long): List<Long>
 
+    @Query("SELECT * FROM service_records WHERE id = :id")
+    suspend fun getById(id: Long): ServiceRecordEntity?
+
+    @Query("SELECT sr.* FROM service_records sr INNER JOIN service_record_items sri ON sri.serviceRecordId = sr.id WHERE sri.maintenanceScheduleId = :scheduleId ORDER BY sr.serviceEpochDay DESC, sr.id DESC LIMIT 1")
+    suspend fun latestForSchedule(scheduleId: Long): ServiceRecordEntity?
+
     @Insert
     suspend fun insert(record: ServiceRecordEntity): Long
 
+    @Update
+    suspend fun update(record: ServiceRecordEntity)
+
+    @Delete
+    suspend fun delete(record: ServiceRecordEntity)
+
     @Insert
     suspend fun insertItems(items: List<ServiceRecordItemEntity>)
+
+    @Query("DELETE FROM service_record_items WHERE serviceRecordId = :serviceRecordId")
+    suspend fun deleteItems(serviceRecordId: Long)
 
     @Insert
     suspend fun insertAttachment(attachment: AttachmentReferenceEntity): Long
@@ -122,6 +140,12 @@ interface ExpenseDao {
 
     @Insert
     suspend fun insert(expense: ExpenseEntity): Long
+
+    @Update
+    suspend fun update(expense: ExpenseEntity)
+
+    @Delete
+    suspend fun delete(expense: ExpenseEntity)
 }
 
 @Dao
@@ -131,6 +155,15 @@ interface FuelDao {
 
     @Insert
     suspend fun insert(entry: FuelEntryEntity): Long
+
+    @Query("SELECT * FROM fuel_entries WHERE id = :id")
+    suspend fun getById(id: Long): FuelEntryEntity?
+
+    @Update
+    suspend fun update(entry: FuelEntryEntity)
+
+    @Delete
+    suspend fun delete(entry: FuelEntryEntity)
 }
 
 @Dao
@@ -212,6 +245,12 @@ interface PhaseThreeDao {
 
     @Update
     suspend fun updateProblem(problem: ProblemLogEntity)
+
+    @Delete
+    suspend fun deleteProblem(problem: ProblemLogEntity)
+
+    @Query("DELETE FROM attachment_references WHERE ownerType = :ownerType AND ownerId = :ownerId")
+    suspend fun deleteAttachments(ownerType: String, ownerId: Long)
 
     @Insert
     suspend fun insertAttachment(attachment: AttachmentReferenceEntity): Long

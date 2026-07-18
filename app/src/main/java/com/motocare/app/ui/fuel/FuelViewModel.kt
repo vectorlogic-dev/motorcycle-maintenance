@@ -54,16 +54,23 @@ class FuelViewModel @Inject constructor(
         FuelUiState(bike, fills, calculator.calculate(fills), price)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FuelUiState())
 
-    fun add(input: FuelInput, onSaved: () -> Unit) {
+    fun add(input: FuelInput, onSaved: () -> Unit) = save(input, null, onSaved)
+
+    fun update(existing: FuelEntryEntity, input: FuelInput, onSaved: () -> Unit) = save(input, existing, onSaved)
+
+    private fun save(input: FuelInput, existing: FuelEntryEntity?, onSaved: () -> Unit) {
         val bike = uiState.value.motorcycle ?: return
         val date = runCatching { LocalDate.parse(input.date) }.getOrNull() ?: return
         val odometer = input.odometerKm.toLongOrNull() ?: return
         val litres = input.litres.toDoubleOrNull()?.takeIf { it > 0 } ?: return
         val price = input.pricePerLitre.toCentavosOrNull() ?: return
         viewModelScope.launch {
-            repository.add(
-                FuelEntryEntity(
+            repository.save(
+                (existing ?: FuelEntryEntity(
                     motorcycleId = bike.id,
+                    dateEpochDay = date.toEpochDay(), odometerKm = odometer, litres = litres,
+                    pricePerLitreCentavos = price, totalCostCentavos = (litres * price).toLong(), fullTank = input.fullTank,
+                )).copy(
                     dateEpochDay = date.toEpochDay(),
                     odometerKm = odometer,
                     litres = litres,
@@ -77,4 +84,6 @@ class FuelViewModel @Inject constructor(
             onSaved()
         }
     }
+
+    fun delete(entry: FuelEntryEntity) = viewModelScope.launch { repository.delete(entry) }
 }

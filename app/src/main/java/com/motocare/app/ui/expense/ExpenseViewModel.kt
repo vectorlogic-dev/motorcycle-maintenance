@@ -68,14 +68,19 @@ class ExpenseViewModel @Inject constructor(
         viewModelScope.launch { preferences.setDefaultParkingCentavos(amount) }
     }
 
-    fun add(input: ExpenseInput, onSaved: () -> Unit) {
+    fun add(input: ExpenseInput, onSaved: () -> Unit) = save(input, null, onSaved)
+
+    fun update(existing: ExpenseEntity, input: ExpenseInput, onSaved: () -> Unit) = save(input, existing, onSaved)
+
+    private fun save(input: ExpenseInput, existing: ExpenseEntity?, onSaved: () -> Unit) {
         val bike = uiState.value.motorcycle ?: return
         val date = runCatching { LocalDate.parse(input.date) }.getOrNull() ?: return
         val amount = input.amount.toCentavosOrNull() ?: return
         viewModelScope.launch {
-            repository.add(
-                ExpenseEntity(
+            val expense = (existing ?: ExpenseEntity(
                     motorcycleId = bike.id,
+                    dateEpochDay = date.toEpochDay(), category = input.category, amountCentavos = amount,
+                )).copy(
                     dateEpochDay = date.toEpochDay(),
                     category = input.category,
                     amountCentavos = amount,
@@ -84,9 +89,11 @@ class ExpenseViewModel @Inject constructor(
                     receiptUri = input.receiptUri,
                     paymentMethod = input.paymentMethod.trim(),
                     vendor = input.vendor.trim(),
-                ),
-            )
+                )
+            if (existing == null) repository.add(expense) else repository.update(expense)
             onSaved()
         }
     }
+
+    fun delete(expense: ExpenseEntity) = viewModelScope.launch { repository.delete(expense) }
 }

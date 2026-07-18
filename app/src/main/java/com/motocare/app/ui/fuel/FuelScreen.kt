@@ -40,6 +40,10 @@ import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.asPeso
 import com.motocare.app.ui.components.MotoCareEmptyState
 import com.motocare.app.ui.components.MotoCareSummaryCard
+import com.motocare.app.ui.components.MotoCareDateField
+import com.motocare.app.ui.components.MotoCareDeleteDialog
+import com.motocare.app.ui.components.MotoCareRecordActions
+import com.motocare.app.data.local.entity.FuelEntryEntity
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -48,6 +52,8 @@ import java.time.YearMonth
 fun FuelScreen(onBack: () -> Unit, viewModel: FuelViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<FuelEntryEntity?>(null) }
+    var deleteTarget by remember { mutableStateOf<FuelEntryEntity?>(null) }
     Scaffold(
         topBar = { TopAppBar(title = { Text("Fuel") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) },
         floatingActionButton = { if (state.motorcycle != null) FloatingActionButton({ showAdd = true }) { Icon(Icons.Outlined.Add, "Add fuel") } },
@@ -78,41 +84,56 @@ fun FuelScreen(onBack: () -> Unit, viewModel: FuelViewModel = hiltViewModel()) {
             items(state.entries, key = { it.id }) { entry ->
                 Card(Modifier.fillMaxWidth()) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column {
+                        Column(Modifier.weight(1f)) {
                             Text("${"%.2f".format(entry.litres)} L${if (entry.fullTank) " • Full" else ""}", fontWeight = FontWeight.SemiBold)
                             Text("${"%,d".format(entry.odometerKm)} km • ${LocalDate.ofEpochDay(entry.dateEpochDay).asDisplayDate()}")
                             if (entry.station.isNotBlank()) Text(entry.station)
                         }
-                        Text(entry.totalCostCentavos.asPeso(), color = MaterialTheme.colorScheme.primary)
+                        Column {
+                            Text(entry.totalCostCentavos.asPeso(), color = MaterialTheme.colorScheme.primary)
+                            MotoCareRecordActions("fuel entry", { editing = entry }, { deleteTarget = entry })
+                        }
                     }
                 }
             }
         }
     }
-    if (showAdd) AddFuelDialog(
+    if (showAdd || editing != null) AddFuelDialog(
+        existing = editing,
         currentKm = state.motorcycle?.currentOdometerKm ?: 0,
         defaultPrice = state.defaultPriceCentavos / 100.0,
-        onDismiss = { showAdd = false },
-        onSave = { viewModel.add(it) { showAdd = false } },
+        onDismiss = { showAdd = false; editing = null },
+        onSave = { input ->
+            val existing = editing
+            if (existing == null) viewModel.add(input) { showAdd = false } else viewModel.update(existing, input) { editing = null }
+        },
     )
+    deleteTarget?.let { entry ->
+        MotoCareDeleteDialog(
+            title = "Delete fuel entry?",
+            detail = "Delete the ${"%.2f".format(entry.litres)} L fuel entry from ${LocalDate.ofEpochDay(entry.dateEpochDay).asDisplayDate()}? Fuel economy and odometer history will be recalculated.",
+            onConfirm = { viewModel.delete(entry); deleteTarget = null },
+            onDismiss = { deleteTarget = null },
+        )
+    }
 }
 
 @Composable
-private fun AddFuelDialog(currentKm: Long, defaultPrice: Double, onDismiss: () -> Unit, onSave: (FuelInput) -> Unit) {
-    var date by remember { mutableStateOf(LocalDate.now().toString()) }
-    var km by remember { mutableStateOf(currentKm.toString()) }
-    var litres by remember { mutableStateOf("") }
-    var price by remember { mutableStateOf("%.2f".format(defaultPrice)) }
-    var full by remember { mutableStateOf(true) }
-    var station by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
+private fun AddFuelDialog(existing: FuelEntryEntity?, currentKm: Long, defaultPrice: Double, onDismiss: () -> Unit, onSave: (FuelInput) -> Unit) {
+    var date by remember(existing) { mutableStateOf(existing?.dateEpochDay?.let(LocalDate::ofEpochDay) ?: LocalDate.now()) }
+    var km by remember(existing) { mutableStateOf(existing?.odometerKm?.toString() ?: currentKm.toString()) }
+    var litres by remember(existing) { mutableStateOf(existing?.litres?.let { "%.2f".format(it) }.orEmpty()) }
+    var price by remember(existing) { mutableStateOf(existing?.pricePerLitreCentavos?.let { "%.2f".format(it / 100.0) } ?: "%.2f".format(defaultPrice)) }
+    var full by remember(existing) { mutableStateOf(existing?.fullTank ?: true) }
+    var station by remember(existing) { mutableStateOf(existing?.station.orEmpty()) }
+    var notes by remember(existing) { mutableStateOf(existing?.notes.orEmpty()) }
     val total = (litres.toDoubleOrNull() ?: 0.0) * (price.toDoubleOrNull() ?: 0.0)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add fuel") },
+        title = { Text(if (existing == null) "Add fuel" else "Edit fuel") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(date, { date = it }, label = { Text("Date (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
+                MotoCareDateField(date, { date = it }, "Fuel date")
                 OutlinedTextField(km, { km = it.filter(Char::isDigit) }, label = { Text("Odometer (km)") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(litres, { litres = decimalOnly(it) }, label = { Text("Litres") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(price, { price = decimalOnly(it) }, label = { Text("Price per litre (PHP)") }, modifier = Modifier.fillMaxWidth())
@@ -124,8 +145,8 @@ private fun AddFuelDialog(currentKm: Long, defaultPrice: Double, onDismiss: () -
         },
         confirmButton = {
             TextButton(
-                enabled = km.toLongOrNull() != null && litres.toDoubleOrNull()?.let { it > 0 } == true && price.toDoubleOrNull()?.let { it > 0 } == true && runCatching { LocalDate.parse(date) }.isSuccess,
-                onClick = { onSave(FuelInput(date, km, litres, price, full, station, notes)) },
+                enabled = km.toLongOrNull() != null && litres.toDoubleOrNull()?.let { it > 0 } == true && price.toDoubleOrNull()?.let { it > 0 } == true,
+                onClick = { onSave(FuelInput(date.toString(), km, litres, price, full, station, notes)) },
             ) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },

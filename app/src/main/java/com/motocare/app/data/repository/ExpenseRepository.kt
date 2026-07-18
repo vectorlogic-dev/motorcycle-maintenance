@@ -11,6 +11,8 @@ import javax.inject.Singleton
 class ExpenseRepository @Inject constructor(private val dao: ExpenseDao) {
     fun observe(motorcycleId: Long): Flow<List<ExpenseEntity>> = dao.observeForMotorcycle(motorcycleId)
     suspend fun add(expense: ExpenseEntity): Long = dao.insert(expense)
+    suspend fun update(expense: ExpenseEntity) = dao.update(expense)
+    suspend fun delete(expense: ExpenseEntity) = dao.delete(expense)
     suspend fun addParking(motorcycleId: Long, amountCentavos: Long, date: LocalDate = LocalDate.now()): Long = dao.insert(
         ExpenseEntity(
             motorcycleId = motorcycleId,

@@ -37,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.data.local.entity.InsuranceRecordEntity
 import com.motocare.app.data.local.entity.RegistrationRecordEntity
 import com.motocare.app.util.asDisplayDate
+import com.motocare.app.ui.components.MotoCareOptionalDateField
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
@@ -83,28 +84,28 @@ private fun RecordCard(title: String, expiryEpochDay: Long?, details: List<Strin
 
 @Composable
 private fun RegistrationDialog(existing: RegistrationRecordEntity?, defaultPlate: String, defaultExpiry: Long?, onDismiss: () -> Unit, onSave: (RegistrationInput) -> Unit) {
-    fun date(epoch: Long?) = epoch?.let { LocalDate.ofEpochDay(it).toString() }.orEmpty()
+    fun date(epoch: Long?) = epoch?.let(LocalDate::ofEpochDay)
     var orDate by remember(existing) { mutableStateOf(date(existing?.orDateEpochDay)) }; var crDate by remember(existing) { mutableStateOf(date(existing?.crDateEpochDay)) }
     var expiry by remember(existing) { mutableStateOf(date(existing?.expiryEpochDay ?: defaultExpiry)) }; var plate by remember(existing) { mutableStateOf(existing?.plateNumber ?: defaultPlate) }
     var temporary by remember(existing) { mutableStateOf(existing?.temporaryPlate ?: false) }; var submission by remember(existing) { mutableStateOf(date(existing?.dealerSubmissionEpochDay)) }
     var reference by remember(existing) { mutableStateOf(existing?.ltoTransactionReference.orEmpty()) }; var notes by remember(existing) { mutableStateOf(existing?.notes.orEmpty()) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Registration record") }, text = {
         Column(Modifier.heightIn(max = 550.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            DocField(orDate, { orDate = it }, "OR date"); DocField(crDate, { crDate = it }, "CR date"); DocField(expiry, { expiry = it }, "Registration expiry")
+            MotoCareOptionalDateField(orDate, { orDate = it }, "OR date"); MotoCareOptionalDateField(crDate, { crDate = it }, "CR date"); MotoCareOptionalDateField(expiry, { expiry = it }, "Registration expiry")
             DocField(plate, { plate = it }, "Plate number"); Row { Checkbox(temporary, { temporary = it }); Text("Temporary plate", Modifier.padding(top = 12.dp)) }
-            DocField(submission, { submission = it }, "Dealer submission date"); DocField(reference, { reference = it }, "LTO transaction reference"); DocField(notes, { notes = it }, "Notes", false)
+            MotoCareOptionalDateField(submission, { submission = it }, "Dealer submission date"); DocField(reference, { reference = it }, "LTO transaction reference"); DocField(notes, { notes = it }, "Notes", false)
         }
-    }, confirmButton = { TextButton(onClick = { onSave(RegistrationInput(orDate, crDate, expiry, plate, temporary, submission, reference, notes)) }) { Text("Save") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
+    }, confirmButton = { TextButton(onClick = { onSave(RegistrationInput(orDate?.toString().orEmpty(), crDate?.toString().orEmpty(), expiry?.toString().orEmpty(), plate, temporary, submission?.toString().orEmpty(), reference, notes)) }) { Text("Save") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
 }
 
 @Composable
 private fun InsuranceDialog(existing: InsuranceRecordEntity?, defaultExpiry: Long?, onDismiss: () -> Unit, onSave: (InsuranceInput) -> Unit) {
-    fun date(epoch: Long?) = epoch?.let { LocalDate.ofEpochDay(it).toString() }.orEmpty()
+    fun date(epoch: Long?) = epoch?.let(LocalDate::ofEpochDay)
     var provider by remember(existing) { mutableStateOf(existing?.provider.orEmpty()) }; var policy by remember(existing) { mutableStateOf(existing?.policyNumber.orEmpty()) }
     var start by remember(existing) { mutableStateOf(date(existing?.startEpochDay)) }; var expiry by remember(existing) { mutableStateOf(date(existing?.expiryEpochDay ?: defaultExpiry)) }; var notes by remember(existing) { mutableStateOf(existing?.notes.orEmpty()) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Insurance record") }, text = {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { DocField(provider, { provider = it }, "Provider"); DocField(policy, { policy = it }, "Policy number"); DocField(start, { start = it }, "Start date"); DocField(expiry, { expiry = it }, "Expiry date"); DocField(notes, { notes = it }, "Notes", false) }
-    }, confirmButton = { TextButton(onClick = { onSave(InsuranceInput(provider, policy, start, expiry, notes)) }) { Text("Save") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { DocField(provider, { provider = it }, "Provider"); DocField(policy, { policy = it }, "Policy number"); MotoCareOptionalDateField(start, { start = it }, "Start date"); MotoCareOptionalDateField(expiry, { expiry = it }, "Expiry date"); DocField(notes, { notes = it }, "Notes", false) }
+    }, confirmButton = { TextButton(onClick = { onSave(InsuranceInput(provider, policy, start?.toString().orEmpty(), expiry?.toString().orEmpty(), notes)) }) { Text("Save") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
 }
 
 @Composable private fun DocField(value: String, onChange: (String) -> Unit, label: String, singleLine: Boolean = true) = OutlinedTextField(value, onChange, label = { Text(if ("date" in label.lowercase() || "expiry" in label.lowercase()) "$label (YYYY-MM-DD)" else label) }, modifier = Modifier.fillMaxWidth(), singleLine = singleLine)

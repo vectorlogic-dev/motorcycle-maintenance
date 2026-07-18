@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.data.local.entity.LoanPaymentEntity
 import com.motocare.app.ui.components.MotoCareEmptyState
 import com.motocare.app.ui.components.MotoCareSummaryCard
+import com.motocare.app.ui.components.MotoCareDateField
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.asPeso
 import java.time.LocalDate
@@ -126,7 +127,7 @@ private fun LoanSetupDialog(onDismiss: () -> Unit, onSave: (LoanInput) -> Unit) 
     var term by remember { mutableStateOf("12") }
     var dueDay by remember { mutableStateOf("") }
     var rebate by remember { mutableStateOf("") }
-    var start by remember { mutableStateOf(LocalDate.now().toString()) }
+    var start by remember { mutableStateOf(LocalDate.now()) }
     var notes by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -139,14 +140,14 @@ private fun LoanSetupDialog(onDismiss: () -> Unit, onSave: (LoanInput) -> Unit) 
                 DigitsField(term, { term = it }, "Term (months)")
                 DigitsField(dueDay, { dueDay = it }, "Payment due day")
                 MoneyField(rebate, { rebate = it }, "On-time rebate")
-                OutlinedTextField(start, { start = it }, label = { Text("Start date (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
+                MotoCareDateField(start, { start = it }, "Financing start")
                 OutlinedTextField(notes, { notes = it }, label = { Text("Notes") }, modifier = Modifier.fillMaxWidth())
             }
         },
         confirmButton = {
             TextButton(
-                enabled = monthly.toBigDecimalOrNull() != null && term.toIntOrNull()?.let { it > 0 } == true && runCatching { LocalDate.parse(start) }.isSuccess,
-                onClick = { onSave(LoanInput(cash, down, monthly, term, dueDay, rebate, start, notes)) },
+                enabled = monthly.toBigDecimalOrNull() != null && term.toIntOrNull()?.let { it > 0 } == true,
+                onClick = { onSave(LoanInput(cash, down, monthly, term, dueDay, rebate, start.toString(), notes)) },
             ) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },

@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.util.asDisplayDate
+import com.motocare.app.ui.components.MotoCareDateField
 import java.time.LocalDate
 import kotlin.math.max
 
@@ -78,8 +79,8 @@ fun CoverageScreen(onBack: () -> Unit, viewModel: ComplianceViewModel = hiltView
 @Composable
 private fun CoverageDialog(existing: com.motocare.app.data.local.entity.CoveragePlanEntity?, initialKm: Long, onDismiss: () -> Unit, onSave: (CoverageInput) -> Unit) {
     val today = LocalDate.now()
-    var start by remember(existing) { mutableStateOf(existing?.startEpochDay?.let { LocalDate.ofEpochDay(it).toString() } ?: today.toString()) }
-    var end by remember(existing) { mutableStateOf(existing?.endEpochDay?.let { LocalDate.ofEpochDay(it).toString() } ?: today.plusYears(1).toString()) }
+    var start by remember(existing) { mutableStateOf(existing?.startEpochDay?.let(LocalDate::ofEpochDay) ?: today) }
+    var end by remember(existing) { mutableStateOf(existing?.endEpochDay?.let(LocalDate::ofEpochDay) ?: today.plusYears(1)) }
     var startKm by remember(existing) { mutableStateOf(existing?.startOdometerKm?.toString() ?: initialKm.toString()) }
     var limit by remember(existing) { mutableStateOf(existing?.limitOdometerKm?.toString() ?: "12000") }
     var services by remember(existing) { mutableStateOf(existing?.coveredServices.orEmpty()) }
@@ -92,8 +93,8 @@ private fun CoverageDialog(existing: com.motocare.app.data.local.entity.Coverage
         title = { Text("Coverage details") },
         text = {
             Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Field(start, { start = it }, "Start date (YYYY-MM-DD)")
-                Field(end, { end = it }, "End date (YYYY-MM-DD)")
+                MotoCareDateField(start, { start = it }, "Coverage start")
+                MotoCareDateField(end, { end = it }, "Coverage end")
                 NumberField(startKm, { startKm = it }, "Starting odometer")
                 NumberField(limit, { limit = it }, "Coverage kilometre limit")
                 Field(services, { services = it }, "Covered services", false)
@@ -103,7 +104,7 @@ private fun CoverageDialog(existing: com.motocare.app.data.local.entity.Coverage
                 Field(notes, { notes = it }, "Notes", false)
             }
         },
-        confirmButton = { TextButton(enabled = runCatching { LocalDate.parse(start); LocalDate.parse(end) }.isSuccess, onClick = { onSave(CoverageInput(start, end, startKm, limit, services, labour, parts, dealer, notes)) }) { Text("Save") } },
+        confirmButton = { TextButton(enabled = end >= start, onClick = { onSave(CoverageInput(start.toString(), end.toString(), startKm, limit, services, labour, parts, dealer, notes)) }) { Text("Save") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

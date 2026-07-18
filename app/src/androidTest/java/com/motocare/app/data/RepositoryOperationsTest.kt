@@ -6,6 +6,15 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.motocare.app.data.local.MotoCareDatabase
 import com.motocare.app.data.local.entity.MotorcycleEntity
+import com.motocare.app.data.local.entity.ExpenseEntity
+import com.motocare.app.data.local.entity.FuelEntryEntity
+import com.motocare.app.data.local.entity.MaintenanceScheduleEntity
+import com.motocare.app.data.local.entity.ProblemLogEntity
+import com.motocare.app.data.local.entity.ServiceRecordEntity
+import com.motocare.app.data.repository.ExpenseRepository
+import com.motocare.app.data.repository.FuelRepository
+import com.motocare.app.data.repository.ProblemRepository
+import com.motocare.app.data.repository.ServiceRepository
 import com.motocare.app.data.repository.MotorcycleRepository
 import com.motocare.app.data.repository.OdometerRepository
 import com.motocare.app.data.repository.SampleDataRepository
@@ -92,5 +101,63 @@ class RepositoryOperationsTest {
         assertEquals(LocalDate.of(2026, 7, 16).toEpochDay(), bike.purchaseDateEpochDay)
         assertEquals(LocalDate.of(2026, 7, 16), readingDate)
         assertEquals(1L, initialReading.readingKm)
+    }
+
+    @Test
+    fun historyRepositories_updateDeleteAndRecalculateDependencies() = runTest {
+        val motorcycleId = repository.add(
+            MotorcycleEntity(
+                name = "Daily bike", manufacturer = "Honda", model = "BeAT",
+                initialOdometerKm = 1, currentOdometerKm = 1,
+            ),
+        )
+        val expenses = ExpenseRepository(database.expenseDao())
+        val expenseId = expenses.add(ExpenseEntity(motorcycleId = motorcycleId, dateEpochDay = 1, category = "OTHER", amountCentavos = 100))
+        val expense = expenses.observe(motorcycleId).first().single().copy(id = expenseId, amountCentavos = 250)
+        expenses.update(expense)
+        assertEquals(250L, expenses.observe(motorcycleId).first().single().amountCentavos)
+        expenses.delete(expense)
+        assertEquals(emptyList<ExpenseEntity>(), expenses.observe(motorcycleId).first())
+
+        val fuel = FuelRepository(database)
+        val fuelId = fuel.save(
+            FuelEntryEntity(
+                motorcycleId = motorcycleId, dateEpochDay = 2, odometerKm = 10, litres = 2.0,
+                pricePerLitreCentavos = 7_000, totalCostCentavos = 14_000, fullTank = true,
+            ),
+        )
+        val fill = fuel.observe(motorcycleId).first().single().copy(id = fuelId, dateEpochDay = 3, odometerKm = 20)
+        fuel.save(fill)
+        assertEquals(20L, repository.get(motorcycleId)?.currentOdometerKm)
+        fuel.delete(fill)
+        assertEquals(1L, repository.get(motorcycleId)?.currentOdometerKm)
+
+        val problems = ProblemRepository(database)
+        val problemId = problems.save(
+            ProblemLogEntity(motorcycleId = motorcycleId, dateEpochDay = 2, severity = "LOW", symptom = "Noise"),
+            null,
+        )
+        val problem = problems.observe(motorcycleId).first().single().copy(id = problemId, symptom = "CVT noise")
+        problems.save(problem, null)
+        assertEquals("CVT noise", problems.observe(motorcycleId).first().single().symptom)
+        problems.delete(problem)
+        assertEquals(emptyList<ProblemLogEntity>(), problems.observe(motorcycleId).first())
+
+        val scheduleId = database.maintenanceDao().insert(
+            MaintenanceScheduleEntity(motorcycleId = motorcycleId, name = "Oil", intervalKm = 1_000),
+        )
+        val services = ServiceRepository(database)
+        val serviceId = services.add(
+            ServiceRecordEntity(motorcycleId = motorcycleId, serviceEpochDay = 4, odometerKm = 30),
+            setOf(scheduleId),
+            emptyList(),
+        )
+        val service = services.observe(motorcycleId).first().single().copy(id = serviceId, serviceEpochDay = 5, odometerKm = 40)
+        services.update(service, setOf(scheduleId), emptyList())
+        assertEquals(40L, repository.get(motorcycleId)?.currentOdometerKm)
+        assertEquals(1_040L, database.maintenanceDao().getById(scheduleId)?.nextDueOdometerKm)
+        services.delete(service)
+        assertEquals(1L, repository.get(motorcycleId)?.currentOdometerKm)
+        assertEquals(null, database.maintenanceDao().getById(scheduleId)?.lastServiceOdometerKm)
     }
 }
