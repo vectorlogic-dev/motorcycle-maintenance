@@ -18,7 +18,6 @@ import com.motocare.app.data.repository.ProblemRepository
 import com.motocare.app.data.repository.ServiceRepository
 import com.motocare.app.data.repository.MotorcycleRepository
 import com.motocare.app.data.repository.OdometerRepository
-import com.motocare.app.data.repository.SampleDataRepository
 import com.motocare.app.domain.model.OdometerValidation
 import com.motocare.app.domain.usecase.OdometerCalculator
 import kotlinx.coroutines.flow.first
@@ -29,9 +28,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
 
 @RunWith(AndroidJUnit4::class)
 class RepositoryOperationsTest {
@@ -89,19 +85,6 @@ class RepositoryOperationsTest {
         assertEquals(25L, repository.get(id)?.currentOdometerKm)
         odometers.deleteReading(requireNotNull(database.odometerDao().latest(id)))
         assertEquals(1L, repository.get(id)?.currentOdometerKm)
-    }
-
-    @Test
-    fun sampleProfile_startsOdometerOnJuly16() = runTest {
-        val id = SampleDataRepository(database).createHondaClickSample()
-        val bike = requireNotNull(repository.get(id))
-        val initialReading = requireNotNull(database.odometerDao().latest(id))
-        val readingDate = Instant.ofEpochMilli(initialReading.recordedAtEpochMillis)
-            .atZone(ZoneId.systemDefault()).toLocalDate()
-
-        assertEquals(LocalDate.of(2026, 7, 16).toEpochDay(), bike.purchaseDateEpochDay)
-        assertEquals(LocalDate.of(2026, 7, 16), readingDate)
-        assertEquals(1L, initialReading.readingKm)
     }
 
     @Test

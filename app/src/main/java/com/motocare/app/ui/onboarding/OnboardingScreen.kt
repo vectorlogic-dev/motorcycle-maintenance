@@ -19,7 +19,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -57,16 +56,12 @@ fun OnboardingScreen(viewModel: OnboardingViewModel) {
             }
         }
         Spacer(Modifier.height(24.dp))
-        Button(onClick = viewModel::createSample, modifier = Modifier.fillMaxWidth()) {
-            Text("Create Honda Click125 sample")
-        }
-        Spacer(Modifier.height(12.dp))
-        OutlinedButton(onClick = viewModel::startEmpty, modifier = Modifier.fillMaxWidth()) {
-            Text("Start empty")
+        Button(onClick = viewModel::startEmpty, modifier = Modifier.fillMaxWidth()) {
+            Text("Get started")
         }
         Spacer(Modifier.height(16.dp))
         Text(
-            "Sample schedules are editable templates. Confirm intervals with your owner’s manual or dealer booklet.",
+            "MotoCare starts empty. Add your motorcycle and records when you’re ready.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
