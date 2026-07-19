@@ -5,6 +5,16 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Home
@@ -12,16 +22,24 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.TwoWheeler
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -51,6 +69,7 @@ import com.motocare.app.ui.settings.SettingsScreen
 import com.motocare.app.ui.theme.MotoCareTheme
 import com.motocare.app.util.DisplayFormats
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
@@ -115,20 +134,11 @@ private fun MainNavigation() {
     Scaffold(
         bottomBar = {
             if (route in destinations.map { it.route }) {
-                NavigationBar(tonalElevation = NavigationBarDefaults.Elevation) {
-                    destinations.forEach { destination ->
-                        NavigationBarItem(
-                            selected = route == destination.route,
-                            onClick = {
-                                navController.navigate(destination.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(destination.icon, contentDescription = destination.label) },
-                            label = { Text(destination.label) },
-                        )
+                MotoCareBottomBar(route = route) { destination ->
+                    navController.navigate(destination.route) {
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
                     }
                 }
             }
@@ -173,6 +183,50 @@ private fun MainNavigation() {
             composable("problems") { ProblemScreen(onBack = navController::popBackStack) }
             composable("backup") { BackupScreen(onBack = navController::popBackStack) }
             composable("reports") { ReportsScreen(onBack = navController::popBackStack) }
+        }
+    }
+}
+
+@Composable
+private fun MotoCareBottomBar(route: String?, onNavigate: (Destination) -> Unit) {
+    var visibleLabel by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(route) {
+        visibleLabel = destinations.firstOrNull { it.route == route }?.label
+        delay(1_400)
+        visibleLabel = null
+    }
+
+    Box {
+        NavigationBar(tonalElevation = NavigationBarDefaults.Elevation) {
+            destinations.forEach { destination ->
+                NavigationBarItem(
+                    selected = route == destination.route,
+                    onClick = { onNavigate(destination) },
+                    icon = { Icon(destination.icon, contentDescription = destination.label) },
+                )
+            }
+        }
+        AnimatedVisibility(
+            visible = visibleLabel != null,
+            modifier = Modifier.align(Alignment.TopCenter),
+            enter = fadeIn() + scaleIn(initialScale = 0.88f) + slideInVertically { it / 2 },
+            exit = fadeOut() + scaleOut(targetScale = 0.92f) + slideOutVertically { it / 2 },
+        ) {
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                shape = RoundedCornerShape(50),
+                tonalElevation = 3.dp,
+            ) {
+                Text(
+                    text = visibleLabel.orEmpty(),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
