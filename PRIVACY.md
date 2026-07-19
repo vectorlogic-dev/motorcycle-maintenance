@@ -20,7 +20,7 @@ MotoCare requests notification permission on supported Android versions. It does
 
 Android may also declare non-runtime WorkManager permissions for scheduled local reminders, including wake lock, boot completion, and foreground-service support. MotoCare's automated manifest test rejects network, broad storage, location, camera, microphone, and contacts permissions.
 
-This document describes version 1.0.1 and should be reviewed whenever dependencies or data handling change.
+This document describes version 1.0.2 and should be reviewed whenever dependencies or data handling change.
 
 ## Contact
 

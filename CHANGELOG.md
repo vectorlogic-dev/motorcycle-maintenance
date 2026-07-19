@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.2 - 2026-07-19
+
 - Replaced the horizontally scrolling Quick Actions strip with a fixed, compact Quick log grid
 - Added a categorized All actions bottom sheet so every dashboard action remains visible without swiping
 - Made Odometer, Fuel, Service, Expense, and Issue shortcuts open their add forms directly
