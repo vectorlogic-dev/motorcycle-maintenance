@@ -2,7 +2,7 @@
 
 MotoCare is a private, offline-first Android app for tracking motorcycle maintenance, mileage, fuel, expenses, documents, coverage, and ownership costs.
 
-[Website](https://vectorlogic-dev.github.io/motorcycle-maintenance/) · [Privacy policy](https://vectorlogic-dev.github.io/motorcycle-maintenance/privacy/) · [Support](mailto:motocaresupport@icloud.com)
+[Download APK](https://github.com/vectorlogic-dev/motorcycle-maintenance/releases/latest/download/MotoCare.apk) · [Website](https://vectorlogic-dev.github.io/motorcycle-maintenance/) · [Privacy policy](https://vectorlogic-dev.github.io/motorcycle-maintenance/privacy/) · [Support](mailto:motocaresupport@icloud.com)
 
 ## Screenshots
 
@@ -27,6 +27,10 @@ MotoCare is a private, offline-first Android app for tracking motorcycle mainten
 - Light, dark, and system themes with accessible font scaling
 
 Maintenance schedules included with the sample profile are editable templates. Always confirm service intervals using the motorcycle owner's manual or dealer booklet.
+
+## Install
+
+Download the [latest MotoCare APK](https://github.com/vectorlogic-dev/motorcycle-maintenance/releases/latest/download/MotoCare.apk) on a device running Android 8.0 or later. Android may ask you to allow installs from the browser or file manager used to open the APK.
 
 ## Private by design
 
