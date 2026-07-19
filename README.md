@@ -68,4 +68,6 @@ Questions and feedback are welcome at [motocaresupport@icloud.com](mailto:motoca
 
 ## License
 
-No open-source license is currently granted. Copyright © 2026 vectorlogic. All rights reserved.
+MotoCare is open-source software licensed under the [Apache License 2.0](LICENSE).
+
+Copyright © 2026 vectorlogic.
