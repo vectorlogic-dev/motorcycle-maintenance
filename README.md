@@ -1,52 +1,71 @@
 # MotoCare
 
-MotoCare is an Android-first, offline motorcycle maintenance and ownership tracker built with Kotlin and Jetpack Compose.
+MotoCare is a private, offline-first Android app for tracking motorcycle maintenance, mileage, fuel, expenses, documents, coverage, and ownership costs.
 
-Website: [vectorlogic-dev.github.io/motorcycle-maintenance](https://vectorlogic-dev.github.io/motorcycle-maintenance/) · Support: [motocaresupport@icloud.com](mailto:motocaresupport@icloud.com)
+[Website](https://vectorlogic-dev.github.io/motorcycle-maintenance/) · [Privacy policy](https://vectorlogic-dev.github.io/motorcycle-maintenance/privacy/) · [Support](mailto:motocaresupport@icloud.com)
 
-## Implemented
+## Screenshots
 
-- Optional Honda Click125 Smart Edition sample setup or an empty start
-- Multiple motorcycle profiles with archive support and masked optional identifiers
-- Manual odometer history, validation, explicit correction confirmation, and riding-rate summaries
-- Editable maintenance schedules with mileage and time triggers evaluated as “whichever comes first”
-- Dashboard for odometer, due/overdue maintenance, free-maintenance coverage, and basic financing context
-- Opt-in daily WorkManager maintenance checks and Android notification channel
-- Version-1 Room schema for the planned ownership records, URI-only attachments, Hilt, repositories, Flow, and DataStore defaults
-- Service history with receipt references and transactional maintenance-schedule updates
-- Expense tracking with daily, monthly, and annual summaries plus configurable one-tap parking
-- Fuel logs, monthly spending, and economy calculated only across valid full-tank intervals
-- Financing schedules with payment statuses, rebates, balances, due dates, and payoff estimates
-- Dashboard ownership totals, cost-per-kilometre figures, and active Phase 2 quick actions
-- Purchase date/type/price, seller, and second-hand ownership details
-- Coverage forecasting with upcoming services before the recorded limit
-- Registration, insurance, document references, and expiry reminders without legal conclusions
-- Problem and symptom tracking with resolution history and media URI references
-- Storage Access Framework JSON backup/restore and CSV exports without broad storage permissions
-- Accessible six-month cost and distance reports with native Compose charts
-- Room schema v2 with a tested, non-destructive `1 → 2` migration
-- Settings for theme, date format, currency display, notification preferences, per-motorcycle reminder opt-outs, and quick-entry defaults
-- Repository, migration, privacy-manifest, and critical-screen instrumentation coverage
-- Adaptive launcher/monochrome themed icon and dedicated notification icon
-- Offline privacy documentation and a Play Store release checklist
+<p align="center">
+  <img src="docs/images/onboarding.png" alt="MotoCare onboarding screen" width="30%">
+  <img src="docs/images/dashboard.png" alt="MotoCare motorcycle dashboard" width="30%">
+  <img src="docs/images/maintenance.png" alt="MotoCare maintenance schedules" width="30%">
+</p>
 
-Phases 1–4 of the initial MotoCare brief are implemented. The codebase produces an optimized 1.0.0 release bundle. Store listing assets, release signing credentials, and physical-device accessibility checks remain release-owner tasks.
+## Features
+
+- Multiple motorcycle profiles with purchase details, masked optional identifiers, and archiving
+- Odometer history with correction confirmation and automatic riding-rate summaries
+- Editable maintenance schedules with mileage and time-based reminders
+- Service history, problem tracking, receipt references, and attachment links
+- Fuel logs with full-tank economy calculations
+- Expense tracking with daily, monthly, and annual summaries
+- Financing schedules, payment status, balances, rebates, and payoff estimates
+- Registration, insurance, coverage, and document-expiry tracking
+- Six-month cost and distance reports with native charts
+- User-controlled JSON backup, restore, and CSV exports
+- Light, dark, and system themes with accessible font scaling
+
+Maintenance schedules included with the sample profile are editable templates. Always confirm service intervals using the motorcycle owner's manual or dealer booklet.
+
+## Private by design
+
+- No account or sign-in
+- No advertising, analytics, or user tracking
+- No network, location, camera, microphone, contacts, or broad storage permission
+- App data stays on the device
+- Backups, exports, receipts, and attachments use Android's system document picker
+- Optional reminders are calculated locally from saved dates and mileage
+
+See the [privacy policy](https://vectorlogic-dev.github.io/motorcycle-maintenance/privacy/) for complete details.
+
+## Technology
+
+MotoCare is built with Kotlin, Jetpack Compose, Material 3, Room, Hilt, Coroutines and Flow, WorkManager, DataStore, and Navigation Compose.
 
 ## Build
 
-Android Studio’s bundled JDK 17 and Android SDK 36 are supported.
+Requirements:
+
+- Android Studio with JDK 17
+- Android SDK 36
 
 ```shell
-export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 ./gradlew testDebugUnitTest
 ./gradlew assembleDebug
-./gradlew connectedDebugAndroidTest
 ./gradlew lintDebug
-./gradlew bundleRelease
 ```
 
-Release optimization is always enabled. To sign the bundle, provide the four `MOTOCARE_RELEASE_*` Gradle properties described in [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md); credentials and keystores must stay outside source control.
+Run instrumentation tests with an emulator or device connected:
 
-Maintenance intervals in sample data are deliberately blank editable templates. Users must confirm intervals against the motorcycle owner’s manual or dealer booklet.
+```shell
+./gradlew connectedDebugAndroidTest
+```
 
-See the [public privacy policy](https://vectorlogic-dev.github.io/motorcycle-maintenance/privacy/), [docs/PRODUCTION_AUDIT.md](docs/PRODUCTION_AUDIT.md) for the verified release-candidate status, and [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) for release-owner preparation.
+## Support
+
+Questions and feedback are welcome at [motocaresupport@icloud.com](mailto:motocaresupport@icloud.com).
+
+## License
+
+No open-source license is currently granted. Copyright © 2026 vectorlogic. All rights reserved.
