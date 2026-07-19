@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Replaced the horizontally scrolling Quick Actions strip with a fixed, compact Quick log grid
+- Added a categorized All actions bottom sheet so every dashboard action remains visible without swiping
+- Made Odometer, Fuel, Service, Expense, and Issue shortcuts open their add forms directly
+- Changed the Parking shortcut to open Expenses instead of silently creating a parking record
+
 ## 1.0.1
 
 - Removed the bundled Honda Click125 sample so every fresh installation starts with an empty garage

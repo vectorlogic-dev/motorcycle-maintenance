@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,10 +48,17 @@ import java.time.ZoneId
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OdometerScreen(onBack: () -> Unit, viewModel: OdometerViewModel = hiltViewModel()) {
+fun OdometerScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel: OdometerViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
+    var startAddHandled by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<OdometerEntryEntity?>(null) }
+    LaunchedEffect(startWithAdd, state.motorcycle?.id) {
+        if (startWithAdd && !startAddHandled && state.motorcycle != null) {
+            showAdd = true
+            startAddHandled = true
+        }
+    }
     Scaffold(
         topBar = { TopAppBar(title = { Text("Odometer") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) },
         floatingActionButton = { if (state.motorcycle != null) FloatingActionButton({ showAdd = true }) { Icon(Icons.Outlined.Add, "Add reading") } },

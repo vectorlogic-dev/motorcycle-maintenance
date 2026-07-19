@@ -1,8 +1,6 @@
 package com.motocare.app.ui.dashboard
 
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,9 +9,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Add
@@ -28,23 +29,23 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -61,6 +62,7 @@ import kotlin.math.max
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     contentPadding: PaddingValues,
@@ -107,43 +109,88 @@ fun DashboardScreen(
             icon = Icons.Outlined.Speed,
             modifier = Modifier.fillMaxWidth(),
         )
-        val quickActionScroll = rememberScrollState()
-        MotoCareSectionHeader("Quick actions")
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surfaceVariant,
-        ) {
-            Column(
-                modifier = Modifier.padding(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(quickActionScroll)
-                        .semantics {
-                            contentDescription = "Quick actions"
-                            stateDescription = when {
-                                quickActionScroll.canScrollBackward && quickActionScroll.canScrollForward -> "Middle of list"
-                                quickActionScroll.canScrollBackward -> "End of list"
-                                quickActionScroll.canScrollForward -> "Start of list; more actions available"
-                                else -> "All actions visible"
-                            }
-                        }
-                        .padding(horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    QuickAction("Odometer", Icons.Outlined.Add, onAddOdometer)
-                    QuickAction("Maintenance", Icons.Outlined.Build, onMaintenance)
-                    QuickAction("Service", Icons.AutoMirrored.Outlined.ReceiptLong, onAddService)
-                    QuickAction("Fuel", Icons.Outlined.LocalGasStation, onAddFuel)
-                    QuickAction("Parking", Icons.Outlined.LocalParking, onAddParking)
-                    QuickAction("Expense", Icons.AutoMirrored.Outlined.ReceiptLong, onAddExpense)
-                    QuickAction("Loan", Icons.Outlined.Payments, onLoan)
-                    QuickAction("Issue", Icons.Outlined.ReportProblem, onIssues)
+        var showAllActions by remember { mutableStateOf(false) }
+        val quickLogActions = listOf(
+            QuickLogAction(
+                label = "Odometer",
+                icon = Icons.Outlined.Speed,
+                onClick = onAddOdometer,
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            ),
+            QuickLogAction(
+                label = "Fuel",
+                icon = Icons.Outlined.LocalGasStation,
+                onClick = onAddFuel,
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+            ),
+            QuickLogAction(
+                label = "Service",
+                icon = Icons.Outlined.Build,
+                onClick = onAddService,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ),
+            QuickLogAction(
+                label = "Expense",
+                icon = Icons.Outlined.Payments,
+                onClick = onAddExpense,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
+        )
+        val useSingleColumnActions = LocalDensity.current.fontScale >= 1.5f
+        MotoCareSectionHeader("Quick log")
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (useSingleColumnActions) {
+                quickLogActions.forEach { action ->
+                    QuickLogCard(
+                        label = action.label,
+                        icon = action.icon,
+                        onClick = action.onClick,
+                        modifier = Modifier.fillMaxWidth(),
+                        containerColor = action.containerColor,
+                        contentColor = action.contentColor,
+                    )
                 }
-                HorizontalScrollIndicator(quickActionScroll)
+            } else {
+                quickLogActions.chunked(2).forEach { actions ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        actions.forEach { action ->
+                            QuickLogCard(
+                                label = action.label,
+                                icon = action.icon,
+                                onClick = action.onClick,
+                                modifier = Modifier.weight(1f),
+                                containerColor = action.containerColor,
+                                contentColor = action.contentColor,
+                            )
+                        }
+                    }
+                }
+            }
+            OutlinedButton(onClick = { showAllActions = true }, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.Add, contentDescription = null)
+                Text("All actions", Modifier.padding(start = 8.dp))
+            }
+        }
+        if (showAllActions) {
+            ModalBottomSheet(onDismissRequest = { showAllActions = false }) {
+                AllActionsSheet(
+                    onAction = {
+                        showAllActions = false
+                        it()
+                    },
+                    onAddOdometer = onAddOdometer,
+                    onAddFuel = onAddFuel,
+                    onAddService = onAddService,
+                    onAddExpense = onAddExpense,
+                    onAddParking = onAddParking,
+                    onIssues = onIssues,
+                    onMaintenance = onMaintenance,
+                    onLoan = onLoan,
+                )
             }
         }
         MotoCareSectionHeader("Maintenance")
@@ -191,38 +238,13 @@ fun DashboardScreen(
     }
 }
 
-@Composable
-private fun HorizontalScrollIndicator(scrollState: ScrollState) {
-    val trackColor = MaterialTheme.colorScheme.outlineVariant
-    val thumbColor = MaterialTheme.colorScheme.primary
-    Canvas(Modifier.fillMaxWidth().height(4.dp)) {
-        val horizontalInset = 12.dp.toPx()
-        val trackWidth = (size.width - horizontalInset * 2).coerceAtLeast(0f)
-        drawRoundRect(
-            color = trackColor,
-            topLeft = Offset(horizontalInset, 0f),
-            size = Size(trackWidth, size.height),
-            cornerRadius = CornerRadius(size.height, size.height),
-        )
-        val contentWidth = size.width + scrollState.maxValue
-        val thumbWidth = if (contentWidth > 0) {
-            (trackWidth * (size.width / contentWidth)).coerceIn(trackWidth * 0.2f, trackWidth)
-        } else trackWidth
-        val progress = if (scrollState.maxValue > 0) {
-            scrollState.value.toFloat() / scrollState.maxValue
-        } else 0f
-        val startOffset = (trackWidth - thumbWidth) * progress
-        val offset = if (layoutDirection == LayoutDirection.Rtl) {
-            trackWidth - thumbWidth - startOffset
-        } else startOffset
-        drawRoundRect(
-            color = thumbColor,
-            topLeft = Offset(horizontalInset + offset, 0f),
-            size = Size(thumbWidth, size.height),
-            cornerRadius = CornerRadius(size.height, size.height),
-        )
-    }
-}
+private data class QuickLogAction(
+    val label: String,
+    val icon: ImageVector,
+    val onClick: () -> Unit,
+    val containerColor: Color,
+    val contentColor: Color,
+)
 
 @Composable
 private fun EmptyDashboard(onManageMotorcycles: () -> Unit) {
@@ -236,10 +258,96 @@ private fun EmptyDashboard(onManageMotorcycles: () -> Unit) {
 }
 
 @Composable
-private fun QuickAction(label: String, icon: ImageVector, onClick: () -> Unit, enabled: Boolean = true) {
-    OutlinedButton(onClick = onClick, enabled = enabled) {
-        Icon(icon, contentDescription = null)
-        Text(label, Modifier.padding(start = 8.dp))
+private fun QuickLogCard(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    containerColor: Color,
+    contentColor: Color,
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 76.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                modifier = Modifier.size(36.dp),
+                shape = CircleShape,
+                color = contentColor.copy(alpha = 0.12f),
+                contentColor = contentColor,
+            ) {
+                Icon(icon, contentDescription = null, modifier = Modifier.padding(7.dp))
+            }
+            Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun AllActionsSheet(
+    onAction: (() -> Unit) -> Unit,
+    onAddOdometer: () -> Unit,
+    onAddFuel: () -> Unit,
+    onAddService: () -> Unit,
+    onAddExpense: () -> Unit,
+    onAddParking: () -> Unit,
+    onIssues: () -> Unit,
+    onMaintenance: () -> Unit,
+    onLoan: () -> Unit,
+) {
+    Column(
+        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("All actions", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "Log a record or manage your motorcycle.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        Text("Log a record", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        SheetAction("Odometer", "Add a mileage reading", Icons.Outlined.Speed) { onAction(onAddOdometer) }
+        SheetAction("Fuel", "Record a fill-up", Icons.Outlined.LocalGasStation) { onAction(onAddFuel) }
+        SheetAction("Service", "Add completed maintenance work", Icons.Outlined.Build) { onAction(onAddService) }
+        SheetAction("Expense", "Record an ownership cost", Icons.Outlined.Payments) { onAction(onAddExpense) }
+        SheetAction("Parking", "Open expenses to add today’s parking", Icons.Outlined.LocalParking) { onAction(onAddParking) }
+        SheetAction("Issue", "Report a problem or symptom", Icons.Outlined.ReportProblem) { onAction(onIssues) }
+        Text(
+            "Manage",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        SheetAction("Maintenance schedules", "Review service intervals", Icons.AutoMirrored.Outlined.ReceiptLong) { onAction(onMaintenance) }
+        SheetAction("Financing", "Review loan and payments", Icons.Outlined.Payments) { onAction(onLoan) }
+    }
+}
+
+@Composable
+private fun SheetAction(label: String, detail: String, icon: ImageVector, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+            Column(Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.titleMedium)
+                Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
 }
 

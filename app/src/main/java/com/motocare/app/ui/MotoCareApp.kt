@@ -148,24 +148,27 @@ private fun MainNavigation() {
             composable("dashboard") {
                 DashboardScreen(
                     contentPadding = padding,
-                    onAddOdometer = { navController.navigate("odometer") },
+                    onAddOdometer = { navController.navigate("odometer/add") },
                     onManageMotorcycles = { navController.navigate("motorcycles") },
                     onMaintenance = { navController.navigate("maintenance") },
-                    onAddService = { navController.navigate("services") },
-                    onAddFuel = { navController.navigate("fuel") },
-                    onAddParking = { navController.navigate("parking") },
-                    onAddExpense = { navController.navigate("expenses") },
+                    onAddService = { navController.navigate("services/add") },
+                    onAddFuel = { navController.navigate("fuel/add") },
+                    onAddParking = { navController.navigate("expenses") },
+                    onAddExpense = { navController.navigate("expenses/add") },
                     onLoan = { navController.navigate("loan") },
-                    onIssues = { navController.navigate("problems") },
+                    onIssues = { navController.navigate("problems/add") },
                 )
             }
             composable("motorcycles") { MotorcyclesScreen(contentPadding = padding) }
             composable("maintenance") { MaintenanceScreen(contentPadding = padding) }
             composable("odometer") { OdometerScreen(onBack = navController::popBackStack) }
+            composable("odometer/add") { OdometerScreen(onBack = navController::popBackStack, startWithAdd = true) }
             composable("services") { ServiceScreen(onBack = navController::popBackStack) }
+            composable("services/add") { ServiceScreen(onBack = navController::popBackStack, startWithAdd = true) }
             composable("fuel") { FuelScreen(onBack = navController::popBackStack) }
+            composable("fuel/add") { FuelScreen(onBack = navController::popBackStack, startWithAdd = true) }
             composable("expenses") { ExpenseScreen(onBack = navController::popBackStack) }
-            composable("parking") { ExpenseScreen(onBack = navController::popBackStack, startWithParking = true) }
+            composable("expenses/add") { ExpenseScreen(onBack = navController::popBackStack, startWithAdd = true) }
             composable("loan") { LoanScreen(onBack = navController::popBackStack) }
             composable("records") {
                 RecordsHubScreen(
@@ -181,6 +184,7 @@ private fun MainNavigation() {
             composable("coverage") { CoverageScreen(onBack = navController::popBackStack) }
             composable("documents") { DocumentsScreen(onBack = navController::popBackStack) }
             composable("problems") { ProblemScreen(onBack = navController::popBackStack) }
+            composable("problems/add") { ProblemScreen(onBack = navController::popBackStack, startWithAdd = true) }
             composable("backup") { BackupScreen(onBack = navController::popBackStack) }
             composable("reports") { ReportsScreen(onBack = navController::popBackStack) }
         }

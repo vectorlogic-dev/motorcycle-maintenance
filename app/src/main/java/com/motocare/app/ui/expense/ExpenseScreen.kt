@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,15 +59,18 @@ private val expenseCategories = listOf("FUEL", "PARKING", "MAINTENANCE", "REPAIR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExpenseScreen(onBack: () -> Unit, startWithParking: Boolean = false, viewModel: ExpenseViewModel = hiltViewModel()) {
+fun ExpenseScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel: ExpenseViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
+    var startAddHandled by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<ExpenseEntity?>(null) }
     var deleteTarget by remember { mutableStateOf<ExpenseEntity?>(null) }
     var showParkingDefault by remember { mutableStateOf(false) }
-    var parkingHandled by remember { mutableStateOf(false) }
-    if (startWithParking && !parkingHandled && state.motorcycle != null) {
-        androidx.compose.runtime.LaunchedEffect(Unit) { viewModel.addParking(); parkingHandled = true }
+    LaunchedEffect(startWithAdd, state.motorcycle?.id) {
+        if (startWithAdd && !startAddHandled && state.motorcycle != null) {
+            showAdd = true
+            startAddHandled = true
+        }
     }
     Scaffold(
         topBar = { TopAppBar(title = { Text("Expenses") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) },

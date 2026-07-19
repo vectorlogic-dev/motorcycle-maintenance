@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,11 +50,18 @@ import java.time.YearMonth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FuelScreen(onBack: () -> Unit, viewModel: FuelViewModel = hiltViewModel()) {
+fun FuelScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel: FuelViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
+    var startAddHandled by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<FuelEntryEntity?>(null) }
     var deleteTarget by remember { mutableStateOf<FuelEntryEntity?>(null) }
+    LaunchedEffect(startWithAdd, state.motorcycle?.id) {
+        if (startWithAdd && !startAddHandled && state.motorcycle != null) {
+            showAdd = true
+            startAddHandled = true
+        }
+    }
     Scaffold(
         topBar = { TopAppBar(title = { Text("Fuel") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) },
         floatingActionButton = { if (state.motorcycle != null) FloatingActionButton({ showAdd = true }) { Icon(Icons.Outlined.Add, "Add fuel") } },

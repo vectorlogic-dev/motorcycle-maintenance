@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,12 +56,19 @@ private val severities = listOf("LOW", "MEDIUM", "HIGH", "CRITICAL")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProblemScreen(onBack: () -> Unit, viewModel: ProblemViewModel = hiltViewModel()) {
+fun ProblemScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel: ProblemViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var adding by remember { mutableStateOf(false) }
+    var startAddHandled by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<ProblemLogEntity?>(null) }
     var deleteTarget by remember { mutableStateOf<ProblemLogEntity?>(null) }
     var resolving by remember { mutableStateOf<ProblemLogEntity?>(null) }
+    LaunchedEffect(startWithAdd, state.motorcycle?.id) {
+        if (startWithAdd && !startAddHandled && state.motorcycle != null) {
+            adding = true
+            startAddHandled = true
+        }
+    }
     Scaffold(
         topBar = { TopAppBar(title = { Text("Problems & symptoms") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) },
         floatingActionButton = { if (state.motorcycle != null) FloatingActionButton({ adding = true }) { Icon(Icons.Outlined.Add, "Log issue") } },
