@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1
+
+- Removed the bundled Honda Click125 sample so every fresh installation starts with an empty garage
+- Simplified onboarding to one clear empty-start action
+- Replaced wrapping bottom-navigation labels with evenly spaced icons and a brief animated destination label
+- Preserved TalkBack destination descriptions and the selected-item visual indicator
+
 ## 1.0.0
 
 First production-candidate release.

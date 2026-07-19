@@ -189,12 +189,14 @@ private fun MainNavigation() {
 
 @Composable
 private fun MotoCareBottomBar(route: String?, onNavigate: (Destination) -> Unit) {
-    var visibleLabel by remember { mutableStateOf<String?>(null) }
+    var displayedLabel by remember { mutableStateOf("") }
+    var isLabelVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(route) {
-        visibleLabel = destinations.firstOrNull { it.route == route }?.label
+        displayedLabel = destinations.firstOrNull { it.route == route }?.label.orEmpty()
+        isLabelVisible = displayedLabel.isNotEmpty()
         delay(1_400)
-        visibleLabel = null
+        isLabelVisible = false
     }
 
     Box {
@@ -208,7 +210,7 @@ private fun MotoCareBottomBar(route: String?, onNavigate: (Destination) -> Unit)
             }
         }
         AnimatedVisibility(
-            visible = visibleLabel != null,
+            visible = isLabelVisible,
             modifier = Modifier.align(Alignment.TopCenter),
             enter = fadeIn() + scaleIn(initialScale = 0.88f) + slideInVertically { it / 2 },
             exit = fadeOut() + scaleOut(targetScale = 0.92f) + slideOutVertically { it / 2 },
@@ -220,7 +222,7 @@ private fun MotoCareBottomBar(route: String?, onNavigate: (Destination) -> Unit)
                 tonalElevation = 3.dp,
             ) {
                 Text(
-                    text = visibleLabel.orEmpty(),
+                    text = displayedLabel,
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,

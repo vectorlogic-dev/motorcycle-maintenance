@@ -4,7 +4,8 @@
 
 - Run `./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest bundleRelease`.
 - Run `./gradlew connectedDebugAndroidTest` on an API 26+ emulator or device.
-- Smoke-test onboarding with both sample and empty starts.
+- Smoke-test onboarding and confirm a fresh installation starts with an empty garage.
+- Install the signed APK over the previous signed release and confirm existing local records remain available.
 - Check light, dark, large-font, and TalkBack navigation on a physical device.
 - Verify notification permission, channel settings, and reminder opt-outs.
 - Create a backup, restore it, and compare motorcycle and record counts.
@@ -33,4 +34,4 @@
 - Confirm the automated merged-manifest permission test passes.
 - Confirm Room migrations work from every previously released schema.
 - Confirm backup restore is compatible with the release schema.
-- Confirm sample maintenance schedules remain clearly labeled as editable templates.
+- Confirm no motorcycle or record data is created before the user adds it.
