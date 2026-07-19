@@ -6,6 +6,10 @@
 - Added a categorized All actions bottom sheet so every dashboard action remains visible without swiping
 - Made Odometer, Fuel, Service, Expense, and Issue shortcuts open their add forms directly
 - Changed the Parking shortcut to open Expenses instead of silently creating a parking record
+- Added consistent loading and no-motorcycle states across motorcycle-specific screens
+- Replaced transient bottom-navigation bubbles with native selected destination labels
+- Replaced the motorcycle chip carousel with a full-width selector when multiple motorcycles exist
+- Made Records and Backup tools scroll safely at large font sizes and compact screen heights
 
 ## 1.0.1
 

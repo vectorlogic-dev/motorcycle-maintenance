@@ -25,6 +25,7 @@ data class ServiceUiState(
     val motorcycle: MotorcycleEntity? = null,
     val schedules: List<MaintenanceScheduleEntity> = emptyList(),
     val records: List<ServiceRecordEntity> = emptyList(),
+    val isLoading: Boolean = true,
 )
 
 data class ServiceInput(
@@ -54,7 +55,7 @@ class ServiceViewModel @Inject constructor(
     }
     private val schedules = selected.flatMapLatest { it?.let { bike -> maintenance.observeActive(bike.id) } ?: flowOf(emptyList()) }
     private val records = selected.flatMapLatest { it?.let { bike -> repository.observe(bike.id) } ?: flowOf(emptyList()) }
-    val uiState = combine(selected, schedules, records) { bike, plans, history -> ServiceUiState(bike, plans, history) }
+    val uiState = combine(selected, schedules, records) { bike, plans, history -> ServiceUiState(bike, plans, history, isLoading = false) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ServiceUiState())
 
     fun add(input: ServiceInput, onSaved: () -> Unit) {

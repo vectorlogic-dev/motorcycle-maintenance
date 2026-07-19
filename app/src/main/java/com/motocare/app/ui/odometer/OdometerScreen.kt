@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.ui.components.MotoCareEmptyState
+import com.motocare.app.ui.components.MotoCareLoadingState
+import com.motocare.app.ui.components.MotoCareNoMotorcycleState
 import com.motocare.app.ui.components.MotoCareDateField
 import com.motocare.app.ui.components.MotoCareSummaryCard
 import com.motocare.app.data.local.entity.OdometerEntryEntity
@@ -48,7 +50,12 @@ import java.time.ZoneId
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OdometerScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel: OdometerViewModel = hiltViewModel()) {
+fun OdometerScreen(
+    onBack: () -> Unit,
+    onManageMotorcycles: () -> Unit,
+    startWithAdd: Boolean = false,
+    viewModel: OdometerViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
     var startAddHandled by remember { mutableStateOf(false) }
@@ -63,9 +70,12 @@ fun OdometerScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel:
         topBar = { TopAppBar(title = { Text("Odometer") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) },
         floatingActionButton = { if (state.motorcycle != null) FloatingActionButton({ showAdd = true }) { Icon(Icons.Outlined.Add, "Add reading") } },
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        when {
+            state.isLoading -> MotoCareLoadingState(Modifier.padding(padding))
+            state.motorcycle == null -> MotoCareNoMotorcycleState(onManageMotorcycles, Modifier.padding(padding))
+            else -> LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Text(state.motorcycle?.name ?: "No motorcycle selected", style = MaterialTheme.typography.titleLarge)
+                Text(state.motorcycle?.name.orEmpty(), style = MaterialTheme.typography.titleLarge)
                 MotoCareSummaryCard(
                     label = "Current odometer",
                     value = "${"%,d".format(state.motorcycle?.currentOdometerKm ?: 0)} km",
@@ -101,6 +111,7 @@ fun OdometerScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel:
                     }
                 }
             }
+        }
         }
     }
     if (showAdd) AddReadingDialog(

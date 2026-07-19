@@ -30,6 +30,7 @@ data class OdometerUiState(
     val stats: OdometerStats = OdometerStats(),
     val correctionPreviousKm: Long? = null,
     val error: String? = null,
+    val isLoading: Boolean = true,
 )
 
 private data class PendingReading(val km: Long, val date: LocalDate, val note: String)
@@ -57,6 +58,7 @@ class OdometerViewModel @Inject constructor(
             stats = calculator.statsFor(bike, readings),
             correctionPreviousKm = correctionKm,
             error = message,
+            isLoading = false,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OdometerUiState())
 

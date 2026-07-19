@@ -28,6 +28,7 @@ data class LoanUiState(
     val loan: LoanEntity? = null,
     val payments: List<LoanPaymentEntity> = emptyList(),
     val summary: LoanSummary? = null,
+    val isLoading: Boolean = true,
 )
 
 data class LoanInput(
@@ -55,7 +56,7 @@ class LoanViewModel @Inject constructor(
     private val loan = selected.flatMapLatest { it?.let { bike -> repository.observeLoan(bike.id) } ?: flowOf(null) }
     private val payments = selected.flatMapLatest { it?.let { bike -> repository.observePayments(bike.id) } ?: flowOf(emptyList()) }
     val uiState = combine(selected, loan, payments) { bike, finance, installments ->
-        LoanUiState(bike, finance, installments, finance?.let { calculator.calculate(it, installments) })
+        LoanUiState(bike, finance, installments, finance?.let { calculator.calculate(it, installments) }, isLoading = false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LoanUiState())
 
     init {

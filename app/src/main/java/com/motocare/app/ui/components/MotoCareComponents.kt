@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -14,10 +15,12 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.TwoWheeler
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -239,6 +242,39 @@ fun MotoCareEmptyState(
                 Button(onClick = onAction, modifier = Modifier.padding(top = 4.dp)) { Text(actionLabel) }
             }
         }
+    }
+}
+
+@Composable
+fun MotoCareLoadingState(
+    modifier: Modifier = Modifier,
+    label: String = "Loading MotoCare…",
+) {
+    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            CircularProgressIndicator()
+            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+fun MotoCareNoMotorcycleState(
+    onAddMotorcycle: () -> Unit,
+    modifier: Modifier = Modifier,
+    detail: String = "Add a motorcycle before creating records or viewing motorcycle-specific information.",
+) {
+    Box(modifier.fillMaxSize().padding(20.dp), contentAlignment = Alignment.Center) {
+        MotoCareEmptyState(
+            title = "No motorcycle yet",
+            detail = detail,
+            icon = Icons.Outlined.TwoWheeler,
+            actionLabel = "Add motorcycle",
+            onAction = onAddMotorcycle,
+        )
     }
 }
 

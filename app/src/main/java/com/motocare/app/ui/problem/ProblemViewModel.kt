@@ -18,7 +18,11 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
 
-data class ProblemUiState(val motorcycle: MotorcycleEntity? = null, val problems: List<ProblemLogEntity> = emptyList())
+data class ProblemUiState(
+    val motorcycle: MotorcycleEntity? = null,
+    val problems: List<ProblemLogEntity> = emptyList(),
+    val isLoading: Boolean = true,
+)
 data class ProblemInput(val date: String, val odometerKm: String, val severity: String, val symptom: String, val description: String, val mediaUri: String?)
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -30,7 +34,7 @@ class ProblemViewModel @Inject constructor(
 ) : ViewModel() {
     private val selected = combine(motorcycles.activeMotorcycles, preferences.selectedMotorcycleId) { bikes, id -> bikes.firstOrNull { it.id == id } ?: bikes.firstOrNull() }
     private val problems = selected.flatMapLatest { it?.let { bike -> repository.observe(bike.id) } ?: flowOf(emptyList()) }
-    val uiState = combine(selected, problems) { bike, issues -> ProblemUiState(bike, issues) }
+    val uiState = combine(selected, problems) { bike, issues -> ProblemUiState(bike, issues, isLoading = false) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProblemUiState())
 
     fun add(input: ProblemInput, onSaved: () -> Unit) = save(input, null, onSaved)

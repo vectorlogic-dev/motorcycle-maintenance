@@ -42,6 +42,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.data.local.entity.MaintenanceScheduleEntity
 import com.motocare.app.domain.model.MaintenanceStatus
 import com.motocare.app.ui.components.MotoCareEmptyState
+import com.motocare.app.ui.components.MotoCareLoadingState
+import com.motocare.app.ui.components.MotoCareNoMotorcycleState
 import com.motocare.app.ui.components.MotoCareStatusPill
 import com.motocare.app.ui.components.MotoCareOptionalDateField
 import com.motocare.app.ui.theme.motoCareStatusColors
@@ -50,7 +52,11 @@ import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MaintenanceScreen(contentPadding: PaddingValues, viewModel: MaintenanceViewModel = hiltViewModel()) {
+fun MaintenanceScreen(
+    contentPadding: PaddingValues,
+    onManageMotorcycles: () -> Unit,
+    viewModel: MaintenanceViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<MaintenanceScheduleEntity?>(null) }
     var adding by remember { mutableStateOf(false) }
@@ -60,9 +66,12 @@ fun MaintenanceScreen(contentPadding: PaddingValues, viewModel: MaintenanceViewM
         topBar = { TopAppBar(title = { Text("Maintenance") }) },
         floatingActionButton = { if (state.motorcycle != null) FloatingActionButton({ adding = true }) { Icon(Icons.Outlined.Add, "Add maintenance item") } },
     ) { inner ->
-        LazyColumn(Modifier.fillMaxSize().padding(inner), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        when {
+            state.isLoading -> MotoCareLoadingState(Modifier.padding(inner))
+            state.motorcycle == null -> MotoCareNoMotorcycleState(onManageMotorcycles, Modifier.padding(inner))
+            else -> LazyColumn(Modifier.fillMaxSize().padding(inner), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Text(state.motorcycle?.name ?: "No motorcycle selected", style = MaterialTheme.typography.titleLarge)
+                Text(state.motorcycle?.name.orEmpty(), style = MaterialTheme.typography.titleLarge)
                 Text("Mileage and time intervals are evaluated together; the first one reached determines the status.")
             }
             if (state.schedules.isEmpty()) item {
@@ -77,6 +86,7 @@ fun MaintenanceScreen(contentPadding: PaddingValues, viewModel: MaintenanceViewM
             items(state.schedules, key = { it.schedule.id }) { row ->
                 MaintenanceCard(row, onEdit = { editing = row.schedule }, onDeactivate = { deactivate = row.schedule })
             }
+        }
         }
     }
     if (adding || editing != null) {

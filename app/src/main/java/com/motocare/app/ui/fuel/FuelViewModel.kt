@@ -26,6 +26,7 @@ data class FuelUiState(
     val entries: List<FuelEntryEntity> = emptyList(),
     val summary: FuelSummary = FuelSummary(),
     val defaultPriceCentavos: Long = 7_000,
+    val isLoading: Boolean = true,
 )
 
 data class FuelInput(
@@ -51,7 +52,7 @@ class FuelViewModel @Inject constructor(
     }
     private val entries = selected.flatMapLatest { it?.let { bike -> repository.observe(bike.id) } ?: flowOf(emptyList()) }
     val uiState = combine(selected, entries, preferences.defaultFuelPriceCentavos) { bike, fills, price ->
-        FuelUiState(bike, fills, calculator.calculate(fills), price)
+        FuelUiState(bike, fills, calculator.calculate(fills), price, isLoading = false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FuelUiState())
 
     fun add(input: FuelInput, onSaved: () -> Unit) = save(input, null, onSaved)

@@ -20,7 +20,11 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
 
-data class MaintenanceUiState(val motorcycle: MotorcycleEntity? = null, val schedules: List<ScheduleRow> = emptyList())
+data class MaintenanceUiState(
+    val motorcycle: MotorcycleEntity? = null,
+    val schedules: List<ScheduleRow> = emptyList(),
+    val isLoading: Boolean = true,
+)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -35,7 +39,7 @@ class MaintenanceViewModel @Inject constructor(
     }
     private val schedules = selected.flatMapLatest { bike -> bike?.let { repository.observeActive(it.id) } ?: flowOf(emptyList()) }
     val uiState = combine(selected, schedules) { bike, plans ->
-        MaintenanceUiState(bike, plans.map { ScheduleRow(it, calculator.assess(it, bike?.currentOdometerKm ?: 0)) })
+        MaintenanceUiState(bike, plans.map { ScheduleRow(it, calculator.assess(it, bike?.currentOdometerKm ?: 0)) }, isLoading = false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MaintenanceUiState())
 
     fun save(input: ScheduleInput) {

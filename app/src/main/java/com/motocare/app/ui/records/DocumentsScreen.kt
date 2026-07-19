@@ -38,18 +38,27 @@ import com.motocare.app.data.local.entity.InsuranceRecordEntity
 import com.motocare.app.data.local.entity.RegistrationRecordEntity
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.ui.components.MotoCareOptionalDateField
+import com.motocare.app.ui.components.MotoCareLoadingState
+import com.motocare.app.ui.components.MotoCareNoMotorcycleState
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DocumentsScreen(onBack: () -> Unit, viewModel: ComplianceViewModel = hiltViewModel()) {
+fun DocumentsScreen(
+    onBack: () -> Unit,
+    onManageMotorcycles: () -> Unit,
+    viewModel: ComplianceViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var editRegistration by remember { mutableStateOf(false) }
     var editInsurance by remember { mutableStateOf(false) }
     Scaffold(topBar = { TopAppBar(title = { Text("Registration & insurance") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text(state.motorcycle?.name ?: "No motorcycle selected", style = MaterialTheme.typography.titleLarge)
+        when {
+            state.isLoading -> MotoCareLoadingState(Modifier.padding(padding))
+            state.motorcycle == null -> MotoCareNoMotorcycleState(onManageMotorcycles, Modifier.padding(padding))
+            else -> Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(state.motorcycle?.name.orEmpty(), style = MaterialTheme.typography.titleLarge)
             RecordCard("Registration", state.registration?.expiryEpochDay, listOfNotNull(
                 state.registration?.plateNumber?.takeIf { it.isNotBlank() }?.let { "Plate $it" },
                 state.registration?.ltoTransactionReference?.takeIf { it.isNotBlank() }?.let { "Reference $it" },
@@ -60,6 +69,7 @@ fun DocumentsScreen(onBack: () -> Unit, viewModel: ComplianceViewModel = hiltVie
                 state.insurance?.policyNumber?.takeIf { it.isNotBlank() }?.let { "Policy $it" },
             ), { editInsurance = true })
             Text("MotoCare stores dates, references, and your notes. It does not determine legal compliance.", style = MaterialTheme.typography.bodySmall)
+        }
         }
     }
     if (editRegistration) RegistrationDialog(state.registration, state.motorcycle?.plateNumber.orEmpty(), state.motorcycle?.registrationExpiryEpochDay, { editRegistration = false }) { viewModel.saveRegistration(it) { editRegistration = false } }

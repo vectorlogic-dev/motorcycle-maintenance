@@ -40,6 +40,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.data.local.entity.LoanPaymentEntity
 import com.motocare.app.ui.components.MotoCareEmptyState
+import com.motocare.app.ui.components.MotoCareLoadingState
+import com.motocare.app.ui.components.MotoCareNoMotorcycleState
 import com.motocare.app.ui.components.MotoCareSummaryCard
 import com.motocare.app.ui.components.MotoCareDateField
 import com.motocare.app.util.asDisplayDate
@@ -50,12 +52,20 @@ private val paymentStatuses = listOf("PAID_ON_TIME", "PAID_LATE", "MISSED", "PEN
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoanScreen(onBack: () -> Unit, viewModel: LoanViewModel = hiltViewModel()) {
+fun LoanScreen(
+    onBack: () -> Unit,
+    onManageMotorcycles: () -> Unit,
+    viewModel: LoanViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showSetup by remember { mutableStateOf(false) }
     var paymentToMark by remember { mutableStateOf<LoanPaymentEntity?>(null) }
     Scaffold(topBar = { TopAppBar(title = { Text("Financing") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) }) { padding ->
-        if (state.loan == null) {
+        if (state.isLoading) {
+            MotoCareLoadingState(Modifier.padding(padding))
+        } else if (state.motorcycle == null) {
+            MotoCareNoMotorcycleState(onManageMotorcycles, Modifier.padding(padding))
+        } else if (state.loan == null) {
             Column(Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.Center) {
                 MotoCareEmptyState(
                     title = "No financing plan",

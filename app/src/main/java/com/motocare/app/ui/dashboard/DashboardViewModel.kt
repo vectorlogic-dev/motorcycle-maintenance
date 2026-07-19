@@ -60,6 +60,7 @@ data class DashboardUiState(
     val registration: RegistrationRecordEntity? = null,
     val insurance: InsuranceRecordEntity? = null,
     val unresolvedProblems: List<ProblemLogEntity> = emptyList(),
+    val isLoading: Boolean = true,
 ) {
     val dueSoonCount: Int get() = schedules.count { it.assessment.status == MaintenanceStatus.DUE_SOON }
     val overdueCount: Int get() = schedules.count { it.assessment.status == MaintenanceStatus.OVERDUE }
@@ -113,6 +114,7 @@ class DashboardViewModel @Inject constructor(
                 selected = selected,
                 schedules = plans.map { ScheduleRow(it, maintenanceCalculator.assess(it, selected?.currentOdometerKm ?: 0)) },
                 odometerStats = stats,
+                isLoading = false,
             ),
             selected,
             stats,

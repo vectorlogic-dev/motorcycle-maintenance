@@ -5,16 +5,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Home
@@ -22,24 +12,20 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.TwoWheeler
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,9 +53,9 @@ import com.motocare.app.ui.backup.BackupScreen
 import com.motocare.app.ui.reports.ReportsScreen
 import com.motocare.app.ui.settings.SettingsScreen
 import com.motocare.app.ui.theme.MotoCareTheme
+import com.motocare.app.ui.components.MotoCareLoadingState
 import com.motocare.app.util.DisplayFormats
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
@@ -85,13 +71,18 @@ class AppViewModel @Inject constructor(preferences: PreferencesRepository) : Vie
     val notificationsEnabled = preferences.notificationsEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 }
 
-private data class Destination(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
+private data class Destination(
+    val route: String,
+    val label: String,
+    val largeTextLabel: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+)
 private val destinations = listOf(
-    Destination("dashboard", "Home", Icons.Outlined.Home),
-    Destination("motorcycles", "Motorcycles", Icons.Outlined.TwoWheeler),
-    Destination("maintenance", "Maintenance", Icons.Outlined.Build),
-    Destination("records", "Records", Icons.Outlined.Folder),
-    Destination("settings", "Settings", Icons.Outlined.Settings),
+    Destination("dashboard", "Home", "Home", Icons.Outlined.Home),
+    Destination("motorcycles", "Motorcycles", "Bikes", Icons.Outlined.TwoWheeler),
+    Destination("maintenance", "Maintenance", "Care", Icons.Outlined.Build),
+    Destination("records", "Records", "Tools", Icons.Outlined.Folder),
+    Destination("settings", "Settings", "Setup", Icons.Outlined.Settings),
 )
 
 @Composable
@@ -104,7 +95,7 @@ fun MotoCareApp(appViewModel: AppViewModel = hiltViewModel()) {
     DisplayFormats.configure(currency, dateFormat)
     MotoCareTheme(theme) {
         when (onboarded) {
-            null -> Unit
+            null -> MotoCareLoadingState()
             false -> OnboardingScreen(hiltViewModel<OnboardingViewModel>())
             true -> {
                 MainNavigation()
@@ -160,16 +151,16 @@ private fun MainNavigation() {
                 )
             }
             composable("motorcycles") { MotorcyclesScreen(contentPadding = padding) }
-            composable("maintenance") { MaintenanceScreen(contentPadding = padding) }
-            composable("odometer") { OdometerScreen(onBack = navController::popBackStack) }
-            composable("odometer/add") { OdometerScreen(onBack = navController::popBackStack, startWithAdd = true) }
-            composable("services") { ServiceScreen(onBack = navController::popBackStack) }
-            composable("services/add") { ServiceScreen(onBack = navController::popBackStack, startWithAdd = true) }
-            composable("fuel") { FuelScreen(onBack = navController::popBackStack) }
-            composable("fuel/add") { FuelScreen(onBack = navController::popBackStack, startWithAdd = true) }
-            composable("expenses") { ExpenseScreen(onBack = navController::popBackStack) }
-            composable("expenses/add") { ExpenseScreen(onBack = navController::popBackStack, startWithAdd = true) }
-            composable("loan") { LoanScreen(onBack = navController::popBackStack) }
+            composable("maintenance") { MaintenanceScreen(contentPadding = padding, onManageMotorcycles = { navController.navigate("motorcycles") }) }
+            composable("odometer") { OdometerScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }) }
+            composable("odometer/add") { OdometerScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }, startWithAdd = true) }
+            composable("services") { ServiceScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }) }
+            composable("services/add") { ServiceScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }, startWithAdd = true) }
+            composable("fuel") { FuelScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }) }
+            composable("fuel/add") { FuelScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }, startWithAdd = true) }
+            composable("expenses") { ExpenseScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }) }
+            composable("expenses/add") { ExpenseScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }, startWithAdd = true) }
+            composable("loan") { LoanScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }) }
             composable("records") {
                 RecordsHubScreen(
                     contentPadding = padding,
@@ -181,58 +172,29 @@ private fun MainNavigation() {
                 )
             }
             composable("settings") { SettingsScreen(contentPadding = padding, onBackup = { navController.navigate("backup") }) }
-            composable("coverage") { CoverageScreen(onBack = navController::popBackStack) }
-            composable("documents") { DocumentsScreen(onBack = navController::popBackStack) }
-            composable("problems") { ProblemScreen(onBack = navController::popBackStack) }
-            composable("problems/add") { ProblemScreen(onBack = navController::popBackStack, startWithAdd = true) }
+            composable("coverage") { CoverageScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }) }
+            composable("documents") { DocumentsScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }) }
+            composable("problems") { ProblemScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }) }
+            composable("problems/add") { ProblemScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }, startWithAdd = true) }
             composable("backup") { BackupScreen(onBack = navController::popBackStack) }
-            composable("reports") { ReportsScreen(onBack = navController::popBackStack) }
+            composable("reports") { ReportsScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }) }
         }
     }
 }
 
 @Composable
 private fun MotoCareBottomBar(route: String?, onNavigate: (Destination) -> Unit) {
-    var displayedLabel by remember { mutableStateOf("") }
-    var isLabelVisible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(route) {
-        displayedLabel = destinations.firstOrNull { it.route == route }?.label.orEmpty()
-        isLabelVisible = displayedLabel.isNotEmpty()
-        delay(1_400)
-        isLabelVisible = false
-    }
-
-    Box {
-        NavigationBar(tonalElevation = NavigationBarDefaults.Elevation) {
-            destinations.forEach { destination ->
-                NavigationBarItem(
-                    selected = route == destination.route,
-                    onClick = { onNavigate(destination) },
-                    icon = { Icon(destination.icon, contentDescription = destination.label) },
-                )
-            }
-        }
-        AnimatedVisibility(
-            visible = isLabelVisible,
-            modifier = Modifier.align(Alignment.TopCenter),
-            enter = fadeIn() + scaleIn(initialScale = 0.88f) + slideInVertically { it / 2 },
-            exit = fadeOut() + scaleOut(targetScale = 0.92f) + slideOutVertically { it / 2 },
-        ) {
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                shape = RoundedCornerShape(50),
-                tonalElevation = 3.dp,
-            ) {
-                Text(
-                    text = displayedLabel,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                )
-            }
+    val useLargeTextLabels = LocalDensity.current.fontScale >= 1.5f
+    NavigationBar(tonalElevation = NavigationBarDefaults.Elevation) {
+        destinations.forEach { destination ->
+            NavigationBarItem(
+                modifier = Modifier.semantics { contentDescription = destination.label },
+                selected = route == destination.route,
+                onClick = { onNavigate(destination) },
+                icon = { Icon(destination.icon, contentDescription = null) },
+                label = { Text(if (useLargeTextLabels) destination.largeTextLabel else destination.label, maxLines = 1) },
+                alwaysShowLabel = false,
+            )
         }
     }
 }

@@ -36,17 +36,26 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.ui.components.MotoCareDateField
+import com.motocare.app.ui.components.MotoCareLoadingState
+import com.motocare.app.ui.components.MotoCareNoMotorcycleState
 import java.time.LocalDate
 import kotlin.math.max
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CoverageScreen(onBack: () -> Unit, viewModel: ComplianceViewModel = hiltViewModel()) {
+fun CoverageScreen(
+    onBack: () -> Unit,
+    onManageMotorcycles: () -> Unit,
+    viewModel: ComplianceViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf(false) }
     Scaffold(topBar = { TopAppBar(title = { Text("Maintenance coverage") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text(state.motorcycle?.name ?: "No motorcycle selected", style = MaterialTheme.typography.titleLarge)
+        when {
+            state.isLoading -> MotoCareLoadingState(Modifier.padding(padding))
+            state.motorcycle == null -> MotoCareNoMotorcycleState(onManageMotorcycles, Modifier.padding(padding))
+            else -> Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(state.motorcycle?.name.orEmpty(), style = MaterialTheme.typography.titleLarge)
             val plan = state.coverage
             if (plan == null) {
                 Text("No coverage plan recorded.")
@@ -71,6 +80,7 @@ fun CoverageScreen(onBack: () -> Unit, viewModel: ComplianceViewModel = hiltView
                 state.upcomingCoveredSchedules.forEach { Text("• ${it.name}") }
                 Button(onClick = { editing = true }) { Text("Edit coverage") }
             }
+        }
         }
     }
     if (editing) CoverageDialog(state.coverage, state.motorcycle?.initialOdometerKm ?: 0, onDismiss = { editing = false }, onSave = { viewModel.saveCoverage(it) { editing = false } })

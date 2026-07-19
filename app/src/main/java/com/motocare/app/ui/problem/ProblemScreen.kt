@@ -44,6 +44,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.data.local.entity.ProblemLogEntity
 import com.motocare.app.ui.components.MotoCareEmptyState
+import com.motocare.app.ui.components.MotoCareLoadingState
+import com.motocare.app.ui.components.MotoCareNoMotorcycleState
 import com.motocare.app.ui.components.MotoCareStatusPill
 import com.motocare.app.ui.components.MotoCareDateField
 import com.motocare.app.ui.components.MotoCareDeleteDialog
@@ -56,7 +58,12 @@ private val severities = listOf("LOW", "MEDIUM", "HIGH", "CRITICAL")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProblemScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel: ProblemViewModel = hiltViewModel()) {
+fun ProblemScreen(
+    onBack: () -> Unit,
+    onManageMotorcycles: () -> Unit,
+    startWithAdd: Boolean = false,
+    viewModel: ProblemViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var adding by remember { mutableStateOf(false) }
     var startAddHandled by remember { mutableStateOf(false) }
@@ -73,8 +80,11 @@ fun ProblemScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel: 
         topBar = { TopAppBar(title = { Text("Problems & symptoms") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) },
         floatingActionButton = { if (state.motorcycle != null) FloatingActionButton({ adding = true }) { Icon(Icons.Outlined.Add, "Log issue") } },
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text(state.motorcycle?.name ?: "No motorcycle selected", style = MaterialTheme.typography.titleLarge) }
+        when {
+            state.isLoading -> MotoCareLoadingState(Modifier.padding(padding))
+            state.motorcycle == null -> MotoCareNoMotorcycleState(onManageMotorcycles, Modifier.padding(padding))
+            else -> LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item { Text(state.motorcycle?.name.orEmpty(), style = MaterialTheme.typography.titleLarge) }
             if (state.problems.isEmpty()) item {
                 MotoCareEmptyState(
                     title = "No issues logged",
@@ -103,6 +113,7 @@ fun ProblemScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel: 
                     }
                 }
             }
+        }
         }
     }
     if (adding || editing != null) AddProblemDialog(

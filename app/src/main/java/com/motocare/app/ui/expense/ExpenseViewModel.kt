@@ -24,6 +24,7 @@ data class ExpenseUiState(
     val motorcycle: MotorcycleEntity? = null,
     val expenses: List<ExpenseEntity> = emptyList(),
     val defaultParkingCentavos: Long = 3_500,
+    val isLoading: Boolean = true,
 ) {
     val todayTotalCentavos: Long get() = expenses.filter { it.dateEpochDay == LocalDate.now().toEpochDay() }.sumOf { it.amountCentavos }
     val monthTotalCentavos: Long get() {
@@ -56,7 +57,7 @@ class ExpenseViewModel @Inject constructor(
     }
     private val expenses = selected.flatMapLatest { it?.let { bike -> repository.observe(bike.id) } ?: flowOf(emptyList()) }
     val uiState = combine(selected, expenses, preferences.defaultParkingCentavos) { bike, costs, parking ->
-        ExpenseUiState(bike, costs, parking)
+        ExpenseUiState(bike, costs, parking, isLoading = false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExpenseUiState())
 
     fun addParking() = viewModelScope.launch {

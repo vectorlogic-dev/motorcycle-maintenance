@@ -34,6 +34,7 @@ data class ComplianceUiState(
     val upcomingCoveredSchedules: List<MaintenanceScheduleEntity> = emptyList(),
     val registration: RegistrationRecordEntity? = null,
     val insurance: InsuranceRecordEntity? = null,
+    val isLoading: Boolean = true,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -66,7 +67,7 @@ class ComplianceViewModel @Inject constructor(
         Triple(bike, assessment, upcoming)
     }
     val uiState = combine(base, coverage, registration, insurance) { (bike, assessment, upcoming), plan, registrationRecord, insuranceRecord ->
-        ComplianceUiState(bike, plan, assessment, upcoming, registrationRecord, insuranceRecord)
+        ComplianceUiState(bike, plan, assessment, upcoming, registrationRecord, insuranceRecord, isLoading = false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ComplianceUiState())
 
     fun saveCoverage(input: CoverageInput, onSaved: () -> Unit) {

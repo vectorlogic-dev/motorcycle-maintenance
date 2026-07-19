@@ -34,15 +34,24 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.util.asPeso
+import com.motocare.app.ui.components.MotoCareLoadingState
+import com.motocare.app.ui.components.MotoCareNoMotorcycleState
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReportsScreen(onBack: () -> Unit, viewModel: ReportsViewModel = hiltViewModel()) {
+fun ReportsScreen(
+    onBack: () -> Unit,
+    onManageMotorcycles: () -> Unit,
+    viewModel: ReportsViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     Scaffold(topBar = { TopAppBar(title = { Text("Reports") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(state.motorcycle?.name ?: "No motorcycle selected", style = MaterialTheme.typography.titleLarge)
+        when {
+            state.isLoading -> MotoCareLoadingState(Modifier.padding(padding))
+            state.motorcycle == null -> MotoCareNoMotorcycleState(onManageMotorcycles, Modifier.padding(padding))
+            else -> Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(state.motorcycle?.name.orEmpty(), style = MaterialTheme.typography.titleLarge)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 SummaryCard("This month", state.costSummary.monthCentavos.asPeso(), Modifier.weight(1f))
                 SummaryCard("This year", state.costSummary.yearCentavos.asPeso(), Modifier.weight(1f))
@@ -50,6 +59,7 @@ fun ReportsScreen(onBack: () -> Unit, viewModel: ReportsViewModel = hiltViewMode
             SummaryCard("Ownership cost per km", state.costSummary.costPerKmCentavos?.toLong()?.asPeso()?.plus(" / km") ?: "Not enough mileage", Modifier.fillMaxWidth())
             NativeBarChart("Monthly ownership cost", state.monthlyCosts, { it.asPeso() }, MaterialTheme.colorScheme.primary)
             NativeBarChart("Kilometres travelled", state.monthlyDistance, { "${"%,d".format(it)} km" }, MaterialTheme.colorScheme.tertiary)
+        }
         }
     }
 }

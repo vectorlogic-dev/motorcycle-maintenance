@@ -1,7 +1,7 @@
 package com.motocare.app.ui.dashboard
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,16 +19,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.LocalGasStation
 import androidx.compose.material.icons.outlined.LocalParking
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.ReportProblem
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.TwoWheeler
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +54,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.domain.model.MaintenanceStatus
+import com.motocare.app.data.local.entity.MotorcycleEntity
+import com.motocare.app.ui.components.MotoCareLoadingState
 import com.motocare.app.ui.components.MotoCarePageHeader
 import com.motocare.app.ui.components.MotoCareSectionHeader
 import com.motocare.app.ui.components.MotoCareStatusPill
@@ -78,6 +83,10 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    if (state.isLoading) {
+        MotoCareLoadingState(Modifier.padding(contentPadding))
+        return
+    }
     Column(
         Modifier.fillMaxSize().padding(contentPadding).verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -88,15 +97,7 @@ fun DashboardScreen(
             EmptyDashboard(onManageMotorcycles)
             return@Column
         }
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            state.motorcycles.forEach { motorcycle ->
-                AssistChip(
-                    onClick = { viewModel.selectMotorcycle(motorcycle.id) },
-                    label = { Text(motorcycle.name) },
-                    leadingIcon = if (motorcycle.id == selected.id) ({ Text("✓") }) else null,
-                )
-            }
-        }
+        MotorcycleSelector(state.motorcycles, selected, viewModel::selectMotorcycle)
         Text("${selected.manufacturer} ${selected.model} ${selected.variant}", style = MaterialTheme.typography.titleMedium)
         selected.purchaseDateEpochDay?.let {
             val date = LocalDate.ofEpochDay(it)
@@ -235,6 +236,54 @@ fun DashboardScreen(
             InfoCard("Unresolved issues", state.unresolvedProblems.joinToString("\n") { "• ${it.symptom} (${it.severity.lowercase()})" })
         }
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun MotorcycleSelector(
+    motorcycles: List<MotorcycleEntity>,
+    selected: MotorcycleEntity,
+    onSelect: (Long) -> Unit,
+) {
+    if (motorcycles.size <= 1) {
+        Text(selected.name, style = MaterialTheme.typography.titleLarge)
+        return
+    }
+    var expanded by remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                Text("MOTORCYCLE", style = MaterialTheme.typography.labelSmall)
+                Text(selected.name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+            }
+            Icon(Icons.Outlined.ExpandMore, contentDescription = null)
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.fillMaxWidth(0.9f),
+        ) {
+            motorcycles.forEach { motorcycle ->
+                val detail = listOf(motorcycle.manufacturer, motorcycle.model, motorcycle.variant)
+                    .filter(String::isNotBlank)
+                    .joinToString(" ")
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(motorcycle.name, style = MaterialTheme.typography.titleMedium)
+                            if (detail.isNotBlank()) Text(detail, style = MaterialTheme.typography.bodySmall)
+                        }
+                    },
+                    onClick = {
+                        expanded = false
+                        onSelect(motorcycle.id)
+                    },
+                    leadingIcon = if (motorcycle.id == selected.id) {
+                        { Icon(Icons.Outlined.Check, contentDescription = "Selected") }
+                    } else null,
+                )
+            }
+        }
     }
 }
 

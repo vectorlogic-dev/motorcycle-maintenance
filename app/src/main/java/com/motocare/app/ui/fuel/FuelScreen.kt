@@ -40,6 +40,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.asPeso
 import com.motocare.app.ui.components.MotoCareEmptyState
+import com.motocare.app.ui.components.MotoCareLoadingState
+import com.motocare.app.ui.components.MotoCareNoMotorcycleState
 import com.motocare.app.ui.components.MotoCareSummaryCard
 import com.motocare.app.ui.components.MotoCareDateField
 import com.motocare.app.ui.components.MotoCareDeleteDialog
@@ -50,7 +52,12 @@ import java.time.YearMonth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FuelScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel: FuelViewModel = hiltViewModel()) {
+fun FuelScreen(
+    onBack: () -> Unit,
+    onManageMotorcycles: () -> Unit,
+    startWithAdd: Boolean = false,
+    viewModel: FuelViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
     var startAddHandled by remember { mutableStateOf(false) }
@@ -66,9 +73,12 @@ fun FuelScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel: Fue
         topBar = { TopAppBar(title = { Text("Fuel") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) },
         floatingActionButton = { if (state.motorcycle != null) FloatingActionButton({ showAdd = true }) { Icon(Icons.Outlined.Add, "Add fuel") } },
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        when {
+            state.isLoading -> MotoCareLoadingState(Modifier.padding(padding))
+            state.motorcycle == null -> MotoCareNoMotorcycleState(onManageMotorcycles, Modifier.padding(padding))
+            else -> LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Text(state.motorcycle?.name ?: "No motorcycle selected", style = MaterialTheme.typography.titleLarge)
+                Text(state.motorcycle?.name.orEmpty(), style = MaterialTheme.typography.titleLarge)
                 val best = state.summary.bestKmPerLitre?.let { "${"%.1f".format(it)}" } ?: "—"
                 val worst = state.summary.worstKmPerLitre?.let { "${"%.1f".format(it)}" } ?: "—"
                 MotoCareSummaryCard(
@@ -104,6 +114,7 @@ fun FuelScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel: Fue
                     }
                 }
             }
+        }
         }
     }
     if (showAdd || editing != null) AddFuelDialog(

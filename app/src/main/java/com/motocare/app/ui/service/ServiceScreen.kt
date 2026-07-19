@@ -49,6 +49,8 @@ import com.motocare.app.data.local.entity.ServiceRecordEntity
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.asPeso
 import com.motocare.app.ui.components.MotoCareEmptyState
+import com.motocare.app.ui.components.MotoCareLoadingState
+import com.motocare.app.ui.components.MotoCareNoMotorcycleState
 import com.motocare.app.ui.components.MotoCareDateField
 import com.motocare.app.ui.components.MotoCareOptionalDateField
 import com.motocare.app.ui.components.MotoCareDeleteDialog
@@ -57,7 +59,12 @@ import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ServiceScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel: ServiceViewModel = hiltViewModel()) {
+fun ServiceScreen(
+    onBack: () -> Unit,
+    onManageMotorcycles: () -> Unit,
+    startWithAdd: Boolean = false,
+    viewModel: ServiceViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
     var startAddHandled by remember { mutableStateOf(false) }
@@ -74,8 +81,11 @@ fun ServiceScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel: 
         topBar = { TopAppBar(title = { Text("Service history") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) },
         floatingActionButton = { if (state.motorcycle != null) FloatingActionButton({ showAdd = true }) { Icon(Icons.Outlined.Add, "Add service") } },
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text(state.motorcycle?.name ?: "No motorcycle selected", style = MaterialTheme.typography.titleLarge) }
+        when {
+            state.isLoading -> MotoCareLoadingState(Modifier.padding(padding))
+            state.motorcycle == null -> MotoCareNoMotorcycleState(onManageMotorcycles, Modifier.padding(padding))
+            else -> LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item { Text(state.motorcycle?.name.orEmpty(), style = MaterialTheme.typography.titleLarge) }
             if (state.records.isEmpty()) item {
                 MotoCareEmptyState(
                     title = "No service records yet",
@@ -104,6 +114,7 @@ fun ServiceScreen(onBack: () -> Unit, startWithAdd: Boolean = false, viewModel: 
                     }
                 }
             }
+        }
         }
     }
     if (showAdd || editing != null) AddServiceDialog(

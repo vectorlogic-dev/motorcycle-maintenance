@@ -7,11 +7,13 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.motocare.app.ui.records.RecordsHubScreen
 import com.motocare.app.ui.settings.SettingsActions
 import com.motocare.app.ui.settings.SettingsContent
 import com.motocare.app.ui.settings.SettingsUiState
 import com.motocare.app.ui.components.MotoCareDateField
+import com.motocare.app.ui.components.MotoCareNoMotorcycleState
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -39,6 +41,21 @@ class CriticalScreensTest {
         compose.onNodeWithText("Records & tools").assertIsDisplayed()
         compose.onNodeWithText("Reports").performClick()
         assertEquals("reports", route)
+        compose.onNodeWithText("Backup & export").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun noMotorcycleState_routesToGarage() {
+        var openedGarage = false
+        compose.setContent {
+            MaterialTheme {
+                MotoCareNoMotorcycleState(onAddMotorcycle = { openedGarage = true })
+            }
+        }
+
+        compose.onNodeWithText("No motorcycle yet").assertIsDisplayed()
+        compose.onNodeWithText("Add motorcycle").performClick()
+        assertEquals(true, openedGarage)
     }
 
     @Test

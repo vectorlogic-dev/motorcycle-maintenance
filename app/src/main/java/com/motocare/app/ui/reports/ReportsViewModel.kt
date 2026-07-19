@@ -30,6 +30,7 @@ data class ReportsUiState(
     val monthlyCosts: List<MonthlyPoint> = emptyList(),
     val monthlyDistance: List<MonthlyPoint> = emptyList(),
     val costSummary: CostSummary = CostSummary(0, 0, 0, 0, null, null, null),
+    val isLoading: Boolean = true,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -65,6 +66,7 @@ class ReportsViewModel @Inject constructor(
             monthlyCosts = monthlyCost,
             monthlyDistance = months.map { MonthlyPoint(it, stats.travelledByMonth[it.toString()] ?: 0) },
             costSummary = costCalculator.calculate(costs, fills, history, stats.travelledKm),
+            isLoading = false,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReportsUiState())
 }
