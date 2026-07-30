@@ -8,6 +8,7 @@ import com.motocare.app.data.repository.MaintenanceRepository
 import com.motocare.app.data.repository.MotorcycleRepository
 import com.motocare.app.data.repository.PreferencesRepository
 import com.motocare.app.domain.usecase.MaintenanceCalculator
+import com.motocare.app.domain.usecase.StarterMaintenanceScheduleFactory
 import com.motocare.app.ui.dashboard.ScheduleRow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,6 +34,7 @@ class MaintenanceViewModel @Inject constructor(
     preferences: PreferencesRepository,
     private val repository: MaintenanceRepository,
     calculator: MaintenanceCalculator,
+    private val starterSchedules: StarterMaintenanceScheduleFactory,
 ) : ViewModel() {
     private val selected = combine(motorcycles.activeMotorcycles, preferences.selectedMotorcycleId) { bikes, id ->
         bikes.firstOrNull { it.id == id } ?: bikes.firstOrNull()
@@ -68,6 +70,13 @@ class MaintenanceViewModel @Inject constructor(
     }
 
     fun deactivate(id: Long) = viewModelScope.launch { repository.deactivate(id) }
+
+    fun addStarterSchedule() {
+        val bike = uiState.value.motorcycle ?: return
+        viewModelScope.launch {
+            repository.addAll(starterSchedules.create(bike.id, bike.currentOdometerKm))
+        }
+    }
 }
 
 data class ScheduleInput(

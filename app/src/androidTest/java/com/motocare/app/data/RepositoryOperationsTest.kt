@@ -14,12 +14,14 @@ import com.motocare.app.data.local.entity.ProblemLogEntity
 import com.motocare.app.data.local.entity.ServiceRecordEntity
 import com.motocare.app.data.repository.ExpenseRepository
 import com.motocare.app.data.repository.FuelRepository
+import com.motocare.app.data.repository.MaintenanceRepository
 import com.motocare.app.data.repository.ProblemRepository
 import com.motocare.app.data.repository.ServiceRepository
 import com.motocare.app.data.repository.MotorcycleRepository
 import com.motocare.app.data.repository.OdometerRepository
 import com.motocare.app.domain.model.OdometerValidation
 import com.motocare.app.domain.usecase.OdometerCalculator
+import com.motocare.app.domain.usecase.StarterMaintenanceScheduleFactory
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -64,6 +66,32 @@ class RepositoryOperationsTest {
         repository.archive(id)
         assertEquals(emptyList<MotorcycleEntity>(), repository.activeMotorcycles.first())
         assertEquals(true, repository.get(id)?.archived)
+    }
+
+    @Test
+    fun starterMaintenanceSchedules_arePersistedAsEditableTemplates() = runTest {
+        val motorcycleId = repository.add(
+            MotorcycleEntity(
+                name = "Daily bike",
+                manufacturer = "Honda",
+                model = "BeAT",
+                initialOdometerKm = 8_500,
+                currentOdometerKm = 8_500,
+            ),
+        )
+        val maintenance = MaintenanceRepository(database.maintenanceDao())
+        maintenance.addAll(
+            StarterMaintenanceScheduleFactory().create(
+                motorcycleId = motorcycleId,
+                currentOdometerKm = 8_500,
+                startDate = java.time.LocalDate.of(2026, 7, 31),
+            ),
+        )
+
+        val schedules = maintenance.observeActive(motorcycleId).first()
+        assertEquals(6, schedules.size)
+        assertEquals(6, schedules.count { it.isEditableTemplate && it.source == "RESEARCH_STARTER_V1" })
+        assertEquals(11_500L, schedules.single { it.name == "Engine oil change" }.nextDueOdometerKm)
     }
 
     @Test

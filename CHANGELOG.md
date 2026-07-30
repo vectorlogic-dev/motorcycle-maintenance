@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added research-backed, editable starter maintenance intervals for new and existing motorcycles
+
 ## 1.0.2 - 2026-07-19
 
 - Replaced the horizontally scrolling Quick Actions strip with a fixed, compact Quick log grid

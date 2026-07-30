@@ -17,7 +17,7 @@ MotoCare is a private, offline-first Android app for tracking motorcycle mainten
 - Multiple motorcycle profiles with purchase details, masked optional identifiers, and archiving
 - Compact dashboard quick logging with direct entry forms and a categorized all-actions menu
 - Odometer history with correction confirmation and automatic riding-rate summaries
-- Editable maintenance schedules with mileage and time-based reminders
+- Research-backed editable starter maintenance schedules with mileage and time-based reminders
 - Service history, problem tracking, receipt references, and attachment links
 - Fuel logs with full-tank economy calculations
 - Expense tracking with daily, monthly, and annual summaries
@@ -28,6 +28,8 @@ MotoCare is a private, offline-first Android app for tracking motorcycle mainten
 - Light, dark, and system themes with accessible font scaling and adaptive navigation labels
 
 MotoCare starts with an empty garage. Add only the motorcycles and records you want to track, and confirm maintenance intervals using the motorcycle owner's manual or dealer booklet.
+
+The methodology and official references behind the model-agnostic starter schedule are documented in [Starter maintenance template sources](docs/MAINTENANCE_TEMPLATE_SOURCES.md).
 
 ## Install
 

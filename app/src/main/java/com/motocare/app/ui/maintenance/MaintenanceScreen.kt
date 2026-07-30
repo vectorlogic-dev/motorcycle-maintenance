@@ -73,14 +73,22 @@ fun MaintenanceScreen(
             item {
                 Text(state.motorcycle?.name.orEmpty(), style = MaterialTheme.typography.titleLarge)
                 Text("Mileage and time intervals are evaluated together; the first one reached determines the status.")
+                if (state.schedules.any { it.schedule.isEditableTemplate }) {
+                    Text(
+                        "Starter intervals are broad road-use references. Edit them to match the owner’s manual and riding conditions.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
             }
             if (state.schedules.isEmpty()) item {
                 MotoCareEmptyState(
-                    title = "No maintenance items yet",
-                    detail = "Add an editable schedule to keep upcoming service visible.",
+                    title = "No maintenance schedule yet",
+                    detail = "Use researched, editable starter intervals, then confirm each one against the owner’s manual. Tap + to create a custom item instead.",
                     icon = Icons.Outlined.Build,
-                    actionLabel = "Add maintenance item",
-                    onAction = { adding = true },
+                    actionLabel = "Use starter schedule",
+                    onAction = viewModel::addStarterSchedule,
                 )
             }
             items(state.schedules, key = { it.schedule.id }) { row ->

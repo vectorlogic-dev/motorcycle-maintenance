@@ -3,9 +3,11 @@ package com.motocare.app.ui.motorcycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.motocare.app.data.local.entity.MotorcycleEntity
+import com.motocare.app.data.repository.MaintenanceRepository
 import com.motocare.app.data.repository.MotorcycleRepository
 import com.motocare.app.data.repository.OdometerRepository
 import com.motocare.app.data.repository.PreferencesRepository
+import com.motocare.app.domain.usecase.StarterMaintenanceScheduleFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -16,7 +18,9 @@ import javax.inject.Inject
 class MotorcyclesViewModel @Inject constructor(
     private val repository: MotorcycleRepository,
     private val odometers: OdometerRepository,
+    private val maintenance: MaintenanceRepository,
     private val preferences: PreferencesRepository,
+    private val starterSchedules: StarterMaintenanceScheduleFactory,
 ) : ViewModel() {
     val motorcycles = repository.activeMotorcycles.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -24,6 +28,7 @@ class MotorcyclesViewModel @Inject constructor(
         if (motorcycle.id == 0L) {
             val id = repository.add(motorcycle)
             odometers.addReading(id, motorcycle.initialOdometerKm, System.currentTimeMillis(), "Starting odometer", false)
+            maintenance.addAll(starterSchedules.create(id, motorcycle.currentOdometerKm))
             preferences.selectMotorcycle(id)
         } else repository.update(motorcycle)
     }
