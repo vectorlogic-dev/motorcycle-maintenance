@@ -30,6 +30,8 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -151,11 +153,29 @@ private fun MainNavigation() {
                 )
             }
             composable("motorcycles") { MotorcyclesScreen(contentPadding = padding) }
-            composable("maintenance") { MaintenanceScreen(contentPadding = padding, onManageMotorcycles = { navController.navigate("motorcycles") }) }
+            composable("maintenance") {
+                MaintenanceScreen(
+                    contentPadding = padding,
+                    onManageMotorcycles = { navController.navigate("motorcycles") },
+                    onRecordService = { scheduleId -> navController.navigate("services/add/$scheduleId") },
+                )
+            }
             composable("odometer") { OdometerScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }) }
             composable("odometer/add") { OdometerScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }, startWithAdd = true) }
             composable("services") { ServiceScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }) }
             composable("services/add") { ServiceScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }, startWithAdd = true) }
+            composable(
+                route = "services/add/{scheduleId}",
+                arguments = listOf(navArgument("scheduleId") { type = NavType.LongType }),
+            ) { entry ->
+                ServiceScreen(
+                    onBack = navController::popBackStack,
+                    onManageMotorcycles = { navController.navigate("motorcycles") },
+                    startWithAdd = true,
+                    initialScheduleId = entry.arguments?.getLong("scheduleId"),
+                    onServiceSaved = { navController.popBackStack() },
+                )
+            }
             composable("fuel") { FuelScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }) }
             composable("fuel/add") { FuelScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }, startWithAdd = true) }
             composable("expenses") { ExpenseScreen(onBack = navController::popBackStack, onManageMotorcycles = { navController.navigate("motorcycles") }) }

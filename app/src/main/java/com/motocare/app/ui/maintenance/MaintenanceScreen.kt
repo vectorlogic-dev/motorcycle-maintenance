@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -55,6 +56,7 @@ import java.time.LocalDate
 fun MaintenanceScreen(
     contentPadding: PaddingValues,
     onManageMotorcycles: () -> Unit,
+    onRecordService: (Long) -> Unit,
     viewModel: MaintenanceViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -92,7 +94,12 @@ fun MaintenanceScreen(
                 )
             }
             items(state.schedules, key = { it.schedule.id }) { row ->
-                MaintenanceCard(row, onEdit = { editing = row.schedule }, onDeactivate = { deactivate = row.schedule })
+                MaintenanceCard(
+                    row,
+                    onEdit = { editing = row.schedule },
+                    onDeactivate = { deactivate = row.schedule },
+                    onRecordService = { onRecordService(row.schedule.id) },
+                )
             }
         }
         }
@@ -116,7 +123,12 @@ fun MaintenanceScreen(
 }
 
 @Composable
-private fun MaintenanceCard(row: ScheduleRow, onEdit: () -> Unit, onDeactivate: () -> Unit) {
+internal fun MaintenanceCard(
+    row: ScheduleRow,
+    onEdit: () -> Unit,
+    onDeactivate: () -> Unit,
+    onRecordService: () -> Unit,
+) {
     val statusColors = MaterialTheme.motoCareStatusColors
     val (statusColor, statusContainer) = when (row.assessment.status) {
         MaintenanceStatus.GOOD -> statusColors.success to statusColors.successContainer
@@ -143,6 +155,12 @@ private fun MaintenanceCard(row: ScheduleRow, onEdit: () -> Unit, onDeactivate: 
                 ).joinToString(" or ")
                 Text(remaining.ifEmpty { "Open to set an interval" }, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (row.schedule.isEditableTemplate) Text("Editable starter template", style = MaterialTheme.typography.labelSmall)
+                FilledTonalButton(
+                    onClick = onRecordService,
+                    modifier = Modifier.padding(top = 8.dp),
+                ) {
+                    Text("Record service")
+                }
             }
             IconButton(onClick = onDeactivate) { Icon(Icons.Outlined.DeleteOutline, "Deactivate ${row.schedule.name}") }
         }

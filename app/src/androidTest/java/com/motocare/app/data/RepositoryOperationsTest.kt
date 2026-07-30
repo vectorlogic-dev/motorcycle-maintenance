@@ -156,7 +156,7 @@ class RepositoryOperationsTest {
         assertEquals(emptyList<ProblemLogEntity>(), problems.observe(motorcycleId).first())
 
         val scheduleId = database.maintenanceDao().insert(
-            MaintenanceScheduleEntity(motorcycleId = motorcycleId, name = "Oil", intervalKm = 1_000),
+            MaintenanceScheduleEntity(motorcycleId = motorcycleId, name = "Oil", intervalKm = 1_000, intervalDays = 30),
         )
         val services = ServiceRepository(database)
         val serviceId = services.add(
@@ -168,6 +168,7 @@ class RepositoryOperationsTest {
         services.update(service, setOf(scheduleId), emptyList())
         assertEquals(40L, repository.get(motorcycleId)?.currentOdometerKm)
         assertEquals(1_040L, database.maintenanceDao().getById(scheduleId)?.nextDueOdometerKm)
+        assertEquals(35L, database.maintenanceDao().getById(scheduleId)?.nextDueEpochDay)
         services.delete(service)
         assertEquals(1L, repository.get(motorcycleId)?.currentOdometerKm)
         assertEquals(null, database.maintenanceDao().getById(scheduleId)?.lastServiceOdometerKm)

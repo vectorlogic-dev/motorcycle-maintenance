@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Added research-backed, editable starter maintenance intervals for new and existing motorcycles
+- Added a Record service action that opens the service form with the maintenance item preselected
 
 ## 1.0.2 - 2026-07-19
 

@@ -14,6 +14,11 @@ import com.motocare.app.ui.settings.SettingsContent
 import com.motocare.app.ui.settings.SettingsUiState
 import com.motocare.app.ui.components.MotoCareDateField
 import com.motocare.app.ui.components.MotoCareNoMotorcycleState
+import com.motocare.app.data.local.entity.MaintenanceScheduleEntity
+import com.motocare.app.domain.model.MaintenanceAssessment
+import com.motocare.app.domain.model.MaintenanceStatus
+import com.motocare.app.ui.dashboard.ScheduleRow
+import com.motocare.app.ui.maintenance.MaintenanceCard
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -56,6 +61,38 @@ class CriticalScreensTest {
         compose.onNodeWithText("No motorcycle yet").assertIsDisplayed()
         compose.onNodeWithText("Add motorcycle").performClick()
         assertEquals(true, openedGarage)
+    }
+
+    @Test
+    fun maintenanceCard_routesCompletedWorkWithScheduleId() {
+        var scheduleId = 0L
+        compose.setContent {
+            MaterialTheme {
+                MaintenanceCard(
+                    row = ScheduleRow(
+                        schedule = MaintenanceScheduleEntity(
+                            id = 27,
+                            motorcycleId = 1,
+                            name = "Engine oil change",
+                            intervalKm = 3_000,
+                        ),
+                        assessment = MaintenanceAssessment(
+                            status = MaintenanceStatus.GOOD,
+                            remainingKm = 2_000,
+                            remainingDays = null,
+                            overdueByDistance = false,
+                            overdueByTime = false,
+                        ),
+                    ),
+                    onEdit = {},
+                    onDeactivate = {},
+                    onRecordService = { scheduleId = 27 },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Record service").performClick()
+        assertEquals(27L, scheduleId)
     }
 
     @Test

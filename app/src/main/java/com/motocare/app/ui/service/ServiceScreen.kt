@@ -63,6 +63,8 @@ fun ServiceScreen(
     onBack: () -> Unit,
     onManageMotorcycles: () -> Unit,
     startWithAdd: Boolean = false,
+    initialScheduleId: Long? = null,
+    onServiceSaved: () -> Unit = {},
     viewModel: ServiceViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -117,15 +119,27 @@ fun ServiceScreen(
         }
         }
     }
+    val initialScheduleIds = if (editing == null) {
+        initialScheduleId?.takeIf { id -> state.schedules.any { it.id == id } }?.let(::setOf).orEmpty()
+    } else {
+        editingItemIds
+    }
     if (showAdd || editing != null) AddServiceDialog(
         existing = editing,
-        initialScheduleIds = editingItemIds,
+        initialScheduleIds = initialScheduleIds,
         currentKm = state.motorcycle?.currentOdometerKm ?: 0,
         schedules = state.schedules,
         onDismiss = { showAdd = false; editing = null; editingItemIds = emptySet() },
         onSave = { input ->
             val existing = editing
-            if (existing == null) viewModel.add(input) { showAdd = false } else viewModel.update(existing, input) { editing = null; editingItemIds = emptySet() }
+            if (existing == null) {
+                viewModel.add(input) {
+                    showAdd = false
+                    onServiceSaved()
+                }
+            } else {
+                viewModel.update(existing, input) { editing = null; editingItemIds = emptySet() }
+            }
         },
     )
     deleteTarget?.let { record ->
@@ -165,7 +179,15 @@ private fun AddServiceDialog(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (existing == null) "Add service record" else "Edit service record") },
+        title = {
+            Text(
+                when {
+                    existing != null -> "Edit service record"
+                    initialScheduleIds.isNotEmpty() -> "Record completed service"
+                    else -> "Add service record"
+                },
+            )
+        },
         text = {
             Column(Modifier.heightIn(max = 570.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 MotoCareDateField(date, { date = it }, label = "Service date")
