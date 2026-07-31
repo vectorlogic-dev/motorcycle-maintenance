@@ -4,13 +4,14 @@ Audit date: 2026-07-31
 
 ## Result
 
-MotoCare 1.0.4 passes the code, local-data, offline privacy, optimized-build, emulator, and automated-test gates. It is ready to be signed for a GitHub APK release. Google Play publishing still requires a signed AAB, representative physical-device checks, and listing configuration.
+MotoCare 1.0.4 passes the code, local-data, offline privacy, optimized-build, signing, emulator, upgrade, and automated-test gates. It is ready for its GitHub APK release. Google Play publishing still requires representative physical-device checks and listing configuration.
 
 ## Verified
 
-- `testDebugUnitTest`, `lintDebug`, `assembleDebug`, `assembleDebugAndroidTest`, `connectedDebugAndroidTest`, and the unsigned `bundleRelease` build pass.
+- `testDebugUnitTest`, `lintDebug`, `assembleDebug`, `assembleDebugAndroidTest`, `connectedDebugAndroidTest`, and the signed `assembleRelease` and `bundleRelease` builds pass.
 - 19 JVM tests and 22 Android 17/API 37 emulator tests pass.
-- The signed 1.0.3 APK upgrade path was previously verified without clearing app data. A clean 1.0.4 debug install showed the empty-start onboarding with no sample data.
+- The signed 1.0.4 APK and AAB verify successfully and use the same release certificate as 1.0.3.
+- A signed `1.0.3 → 1.0.4` emulator upgrade preserved an existing motorcycle. A clean signed 1.0.4 install showed the empty-start onboarding with no sample data.
 - Room schema versions 1 through 4 are committed, with tested non-destructive `1 → 2`, `2 → 3`, and `3 → 4` migrations.
 - JSON restore accepts versions 1 through 4, upgrades legacy motorcycle and odometer rows, validates foreign keys and attachment owners, and rolls back the entire restore on failure.
 - Initial and later odometer dates feed current mileage, dashboard, reports, cost-per-kilometre, reminders, and coverage forecasting through shared chronological calculations.
@@ -36,7 +37,7 @@ MotoCare 1.0.4 passes the code, local-data, offline privacy, optimized-build, em
 ## Non-blocking maintenance findings
 
 - Lint reports dependency-update availability and a KSP migration suggestion. These are maintenance opportunities, not correctness or release errors; dependency upgrades should be handled as a separately tested change.
-- The optimized unsigned APK/AAB and matching R8 mapping file build successfully. Release signing properties are intentionally absent from the repository and current build environment.
+- The optimized signed APK, signed AAB, and matching R8 mapping file are generated for archival. Signing credentials remain in the release owner's macOS Keychain and are not stored in the repository.
 
 ## Release-owner gate
 
@@ -44,4 +45,4 @@ Complete every unchecked item in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md), e
 
 - run TalkBack, light/dark, large-font, notification, backup/restore, and CSV smoke tests on representative physical devices, including an API 26 device or emulator;
 - publish the privacy policy, complete Play data safety/content rating, provide support contact and store copy, and capture final screenshots;
-- configure the private signing values, verify the signed 1.0.4 APK/AAB certificate, test an upgrade from 1.0.3, and archive the signed AAB with its matching R8 mapping file.
+- archive the signed AAB with its matching R8 mapping file and retain the signing keystore and Keychain credential securely.
