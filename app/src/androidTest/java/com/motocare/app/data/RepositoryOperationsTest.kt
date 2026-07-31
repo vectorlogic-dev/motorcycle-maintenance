@@ -1,6 +1,7 @@
 package com.motocare.app.data
 
 import android.content.Context
+import android.net.Uri
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -27,9 +28,11 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class RepositoryOperationsTest {
@@ -40,7 +43,7 @@ class RepositoryOperationsTest {
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         database = Room.inMemoryDatabaseBuilder(context, MotoCareDatabase::class.java).build()
-        repository = MotorcycleRepository(database.motorcycleDao())
+        repository = MotorcycleRepository(database)
     }
 
     @After
@@ -118,6 +121,74 @@ class RepositoryOperationsTest {
     }
 
     @Test
+    fun odometerRepository_backdatedReadingDoesNotReplaceChronologicalCurrentReading() = runTest {
+        val id = repository.add(
+            MotorcycleEntity(
+                name = "Daily bike",
+                manufacturer = "Honda",
+                model = "BeAT",
+                initialOdometerKm = 1,
+                currentOdometerKm = 1,
+            ),
+        )
+        val odometers = OdometerRepository(database, OdometerCalculator())
+        assertEquals(OdometerValidation.Valid, odometers.addReading(id, 100, 20_000, "", false))
+        assertEquals(OdometerValidation.Valid, odometers.addReading(id, 50, 19_990, "", false))
+        assertEquals(100L, repository.get(id)?.currentOdometerKm)
+
+        val conflict = odometers.addReading(id, 150, 19_995, "", false)
+        assertTrue(conflict is OdometerValidation.CorrectionRequired)
+        assertEquals(100L, repository.get(id)?.currentOdometerKm)
+    }
+
+    @Test
+    fun motorcycleRepository_createPersistsStartingReadingAndSchedulesAtomically() = runTest {
+        val initialDate = java.time.LocalDate.of(2026, 7, 16)
+        val id = repository.create(
+            MotorcycleEntity(
+                name = "Daily bike",
+                manufacturer = "Honda",
+                model = "Click",
+                initialOdometerKm = 12,
+                initialOdometerEpochDay = initialDate.toEpochDay(),
+                currentOdometerKm = 12,
+            ),
+            listOf(MaintenanceScheduleEntity(motorcycleId = 0, name = "Engine oil")),
+        )
+
+        assertEquals(initialDate.toEpochDay(), repository.get(id)?.initialOdometerEpochDay)
+        assertEquals(initialDate.toEpochDay(), database.odometerDao().latest(id)?.recordedEpochDay)
+        assertEquals("Engine oil", database.maintenanceDao().getAllForMotorcycle(id).single().name)
+    }
+
+    @Test
+    fun motorcycleRepository_rejectsInitialDateAfterExistingHistory() = runTest {
+        val id = repository.create(
+            MotorcycleEntity(
+                name = "Daily bike",
+                manufacturer = "Honda",
+                model = "Click",
+                initialOdometerKm = 10,
+                initialOdometerEpochDay = 19_990,
+                currentOdometerKm = 10,
+            ),
+            emptyList(),
+        )
+        assertEquals(
+            OdometerValidation.Valid,
+            OdometerRepository(database, OdometerCalculator()).addReading(id, 20, 20_000, "", false),
+        )
+
+        val failure = runCatching {
+            repository.update(requireNotNull(repository.get(id)).copy(initialOdometerEpochDay = 20_001))
+        }
+
+        assertTrue(failure.isFailure)
+        assertEquals(19_990L, repository.get(id)?.initialOdometerEpochDay)
+        assertEquals(20L, repository.get(id)?.currentOdometerKm)
+    }
+
+    @Test
     fun historyRepositories_updateDeleteAndRecalculateDependencies() = runTest {
         val motorcycleId = repository.add(
             MotorcycleEntity(
@@ -177,6 +248,36 @@ class RepositoryOperationsTest {
     }
 
     @Test
+    fun serviceRepository_rejectsScheduleFromAnotherMotorcycle() = runTest {
+        val first = repository.add(
+            MotorcycleEntity(
+                name = "First", manufacturer = "Honda", model = "Click",
+                initialOdometerKm = 1, currentOdometerKm = 1,
+            ),
+        )
+        val second = repository.add(
+            MotorcycleEntity(
+                name = "Second", manufacturer = "Yamaha", model = "NMAX",
+                initialOdometerKm = 1, currentOdometerKm = 1,
+            ),
+        )
+        val secondSchedule = database.maintenanceDao().insert(
+            MaintenanceScheduleEntity(motorcycleId = second, name = "Belt"),
+        )
+
+        val failure = runCatching {
+            ServiceRepository(database).add(
+                ServiceRecordEntity(motorcycleId = first, serviceEpochDay = 20_000, odometerKm = 10),
+                setOf(secondSchedule),
+                emptyList(),
+            )
+        }
+
+        assertTrue(failure.isFailure)
+        assertEquals(emptyList<ServiceRecordEntity>(), ServiceRepository(database).observe(first).first())
+    }
+
+    @Test
     fun backupRestore_upgradesVersionOneMotorcycles() = runTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         BackupRepository(context, database).restoreJsonText(
@@ -226,6 +327,110 @@ class RepositoryOperationsTest {
         }
 
         assertEquals(true, failure.isFailure)
+        assertEquals("Keep me", repository.get(existingId)?.name)
+    }
+
+    @Test
+    fun backupRestore_upgradesVersionThreeOdometerDates() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        BackupRepository(context, database).restoreJsonText(
+            """
+            {
+              "format":"MotoCare backup",
+              "schemaVersion":3,
+              "tables":{
+                "motorcycles":[{
+                  "id":3,"name":"Legacy","manufacturer":"Honda","model":"Click","variant":"","year":null,
+                  "purchaseDateEpochDay":20650,"purchaseType":"CASH","purchasePriceCentavos":null,"seller":"",
+                  "secondHand":0,"driveType":"BELT","coolingType":"LIQUID","initialOdometerKm":10,
+                  "currentOdometerKm":40,"plateNumber":"","engineNumber":"","chassisNumber":"",
+                  "registrationExpiryEpochDay":null,"insuranceExpiryEpochDay":null,"isFinanced":0,
+                  "notes":"","photoUri":null,"archived":0,"createdAtEpochMillis":0
+                }],
+                "odometer_entries":[{
+                  "id":4,"motorcycleId":3,"readingKm":40,"recordedAtEpochMillis":1784131200000,
+                  "note":"Reading","isCorrection":0
+                }]
+              }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(20650L, repository.get(3)?.initialOdometerEpochDay)
+        assertNotNull(database.odometerDao().latest(3)?.recordedEpochDay)
+    }
+
+    @Test
+    fun backupVersionFour_roundTripsRecordsAndAttachmentReferences() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val motorcycleId = repository.create(
+            MotorcycleEntity(
+                name = "Backup bike",
+                manufacturer = "Honda",
+                model = "Click",
+                initialOdometerKm = 10,
+                initialOdometerEpochDay = 20_000,
+                currentOdometerKm = 10,
+            ),
+            emptyList(),
+        )
+        val serviceId = ServiceRepository(database).add(
+            ServiceRecordEntity(motorcycleId = motorcycleId, serviceEpochDay = 20_001, odometerKm = 20),
+            emptySet(),
+            listOf("content://example/receipt", "content://example/receipt"),
+        )
+        assertEquals(1, database.attachmentDao().getForOwner("SERVICE_RECORD", serviceId).size)
+        val file = File.createTempFile("motocare-backup-", ".json", context.cacheDir)
+        val uri = Uri.fromFile(file)
+        val backups = BackupRepository(context, database)
+
+        try {
+            backups.writeJson(uri)
+            assertTrue(file.readText().contains("\"schemaVersion\": 4"))
+            backups.restoreJson(uri)
+
+            assertEquals("Backup bike", repository.get(motorcycleId)?.name)
+            assertEquals(20_000L, repository.get(motorcycleId)?.initialOdometerEpochDay)
+            assertEquals(
+                "content://example/receipt",
+                database.attachmentDao().getForOwner("SERVICE_RECORD", serviceId).single().uri,
+            )
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun backupRestore_rejectsAttachmentsWithoutMatchingOwners() = runTest {
+        val existingId = repository.add(
+            MotorcycleEntity(
+                name = "Keep me",
+                manufacturer = "Honda",
+                model = "BeAT",
+                initialOdometerKm = 1,
+                currentOdometerKm = 1,
+            ),
+        )
+        val context = ApplicationProvider.getApplicationContext<Context>()
+
+        val failure = runCatching {
+            BackupRepository(context, database).restoreJsonText(
+                """
+                {
+                  "format":"MotoCare backup",
+                  "schemaVersion":4,
+                  "tables":{
+                    "attachment_references":[{
+                      "id":1,"ownerType":"SERVICE_RECORD","ownerId":99,
+                      "uri":"content://example/orphan","mediaType":"image/*"
+                    }]
+                  }
+                }
+                """.trimIndent(),
+            )
+        }
+
+        assertTrue(failure.isFailure)
         assertEquals("Keep me", repository.get(existingId)?.name)
     }
 }

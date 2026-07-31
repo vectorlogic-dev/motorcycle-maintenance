@@ -88,7 +88,11 @@ private val destinations = listOf(
 )
 
 @Composable
-fun MotoCareApp(appViewModel: AppViewModel = hiltViewModel()) {
+fun MotoCareApp(
+    notificationDestination: String? = null,
+    onNotificationDestinationHandled: () -> Unit = {},
+    appViewModel: AppViewModel = hiltViewModel(),
+) {
     val onboarded by appViewModel.onboardingComplete.collectAsStateWithLifecycle()
     val theme by appViewModel.theme.collectAsStateWithLifecycle()
     val currency by appViewModel.currency.collectAsStateWithLifecycle()
@@ -100,7 +104,7 @@ fun MotoCareApp(appViewModel: AppViewModel = hiltViewModel()) {
             null -> MotoCareLoadingState()
             false -> OnboardingScreen(hiltViewModel<OnboardingViewModel>())
             true -> {
-                MainNavigation()
+                MainNavigation(notificationDestination, onNotificationDestinationHandled)
                 if (notificationsEnabled) NotificationPermissionEffect()
             }
         }
@@ -120,10 +124,19 @@ private fun NotificationPermissionEffect() {
 }
 
 @Composable
-private fun MainNavigation() {
+private fun MainNavigation(
+    notificationDestination: String?,
+    onNotificationDestinationHandled: () -> Unit,
+) {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
+    LaunchedEffect(notificationDestination) {
+        notificationDestination?.let { destination ->
+            navController.navigate(destination) { launchSingleTop = true }
+            onNotificationDestinationHandled()
+        }
+    }
     Scaffold(
         bottomBar = {
             if (route in destinations.map { it.route }) {

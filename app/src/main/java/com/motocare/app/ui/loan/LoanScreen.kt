@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.data.local.entity.LoanPaymentEntity
+import com.motocare.app.data.local.entity.LoanEntity
 import com.motocare.app.ui.components.MotoCareEmptyState
 import com.motocare.app.ui.components.MotoCareLoadingState
 import com.motocare.app.ui.components.MotoCareNoMotorcycleState
@@ -46,6 +47,8 @@ import com.motocare.app.ui.components.MotoCareSummaryCard
 import com.motocare.app.ui.components.MotoCareDateField
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.asPeso
+import com.motocare.app.util.isBlankOrValidMoney
+import com.motocare.app.util.toCentavosOrNull
 import java.time.LocalDate
 
 private val paymentStatuses = listOf("PAID_ON_TIME", "PAID_LATE", "MISSED", "PENDING")
@@ -60,6 +63,7 @@ fun LoanScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showSetup by remember { mutableStateOf(false) }
     var paymentToMark by remember { mutableStateOf<LoanPaymentEntity?>(null) }
+    var deleteLoan by remember { mutableStateOf<LoanEntity?>(null) }
     Scaffold(topBar = { TopAppBar(title = { Text("Financing") }, navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } }) }) { padding ->
         if (state.isLoading) {
             MotoCareLoadingState(Modifier.padding(padding))
@@ -90,6 +94,13 @@ fun LoanScreen(
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         )
                     }
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        TextButton(onClick = { showSetup = true }) { Text("Edit financing") }
+                        TextButton(onClick = { state.loan?.let { deleteLoan = it } }) { Text("Remove financing") }
+                    }
                     Text("Payment schedule", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 16.dp))
                 }
                 items(state.payments, key = { it.id }) { payment ->
@@ -109,15 +120,30 @@ fun LoanScreen(
             }
         }
     }
-    if (showSetup) LoanSetupDialog(onDismiss = { showSetup = false }, onSave = { viewModel.configure(it) { showSetup = false } })
+    if (showSetup) {
+        LoanSetupDialog(
+            existing = state.loan,
+            onDismiss = { showSetup = false },
+            onSave = { input -> viewModel.configure(input, state.loan) { showSetup = false } },
+        )
+    }
     paymentToMark?.let { payment ->
+        var paidDate by remember(payment.id) {
+            mutableStateOf(payment.paidEpochDay?.let(LocalDate::ofEpochDay) ?: LocalDate.now())
+        }
         AlertDialog(
             onDismissRequest = { paymentToMark = null },
             title = { Text("Payment ${payment.installmentNumber}") },
             text = {
                 Column {
+                    MotoCareDateField(paidDate, { paidDate = it }, label = "Payment date")
+                    Text(
+                        "The selected date is used when marking this payment paid.",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
                     paymentStatuses.forEach { status ->
-                        TextButton(onClick = { viewModel.mark(payment, status); paymentToMark = null }, modifier = Modifier.fillMaxWidth()) {
+                        TextButton(onClick = { viewModel.mark(payment, status, paidDate); paymentToMark = null }, modifier = Modifier.fillMaxWidth()) {
                             Text(status.replace('_', ' '))
                         }
                     }
@@ -127,21 +153,34 @@ fun LoanScreen(
             dismissButton = { TextButton(onClick = { paymentToMark = null }) { Text("Cancel") } },
         )
     }
+    deleteLoan?.let { loan ->
+        AlertDialog(
+            onDismissRequest = { deleteLoan = null },
+            title = { Text("Remove financing plan?") },
+            text = { Text("This removes the financing schedule and payment statuses from MotoCare. Other motorcycle records are not affected.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.delete(loan); deleteLoan = null }) { Text("Remove") }
+            },
+            dismissButton = { TextButton(onClick = { deleteLoan = null }) { Text("Cancel") } },
+        )
+    }
 }
 
 @Composable
-private fun LoanSetupDialog(onDismiss: () -> Unit, onSave: (LoanInput) -> Unit) {
-    var cash by remember { mutableStateOf("") }
-    var down by remember { mutableStateOf("") }
-    var monthly by remember { mutableStateOf("") }
-    var term by remember { mutableStateOf("12") }
-    var dueDay by remember { mutableStateOf("") }
-    var rebate by remember { mutableStateOf("") }
-    var start by remember { mutableStateOf(LocalDate.now()) }
-    var notes by remember { mutableStateOf("") }
+private fun LoanSetupDialog(existing: LoanEntity? = null, onDismiss: () -> Unit, onSave: (LoanInput) -> Unit) {
+    var cash by remember(existing) { mutableStateOf(existing?.cashPriceCentavos?.let { "%.2f".format(it / 100.0) }.orEmpty()) }
+    var down by remember(existing) { mutableStateOf(existing?.downPaymentCentavos?.let { "%.2f".format(it / 100.0) }.orEmpty()) }
+    var monthly by remember(existing) { mutableStateOf(existing?.monthlyPaymentCentavos?.let { "%.2f".format(it / 100.0) }.orEmpty()) }
+    var term by remember(existing) { mutableStateOf(existing?.termMonths?.toString() ?: "12") }
+    var dueDay by remember(existing) { mutableStateOf(existing?.paymentDueDay?.toString().orEmpty()) }
+    var rebate by remember(existing) { mutableStateOf(existing?.rebateCentavos?.let { "%.2f".format(it / 100.0) }.orEmpty()) }
+    var start by remember(existing) { mutableStateOf(existing?.startEpochDay?.let(LocalDate::ofEpochDay) ?: LocalDate.now()) }
+    var notes by remember(existing) { mutableStateOf(existing?.notes.orEmpty()) }
+    var confirmReplacement by remember { mutableStateOf(false) }
+    val input = LoanInput(cash, down, monthly, term, dueDay, rebate, start.toString(), notes)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Set up financing") },
+        title = { Text(if (existing == null) "Set up financing" else "Edit financing") },
         text = {
             Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 MoneyField(cash, { cash = it }, "Cash price (optional)")
@@ -156,12 +195,28 @@ private fun LoanSetupDialog(onDismiss: () -> Unit, onSave: (LoanInput) -> Unit) 
         },
         confirmButton = {
             TextButton(
-                enabled = monthly.toBigDecimalOrNull() != null && term.toIntOrNull()?.let { it > 0 } == true,
-                onClick = { onSave(LoanInput(cash, down, monthly, term, dueDay, rebate, start.toString(), notes)) },
+                enabled = monthly.toCentavosOrNull()?.let { it > 0 } == true &&
+                    cash.isBlankOrValidMoney() &&
+                    down.isBlankOrValidMoney() &&
+                    rebate.isBlankOrValidMoney() &&
+                    term.toIntOrNull()?.let { it > 0 } == true &&
+                    (dueDay.isBlank() || dueDay.toIntOrNull() in 1..31),
+                onClick = { if (existing == null) onSave(input) else confirmReplacement = true },
             ) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+    if (confirmReplacement) {
+        AlertDialog(
+            onDismissRequest = { confirmReplacement = false },
+            title = { Text("Rebuild payment schedule?") },
+            text = { Text("Saving financing changes rebuilds the installment schedule and clears its existing payment statuses.") },
+            confirmButton = {
+                TextButton(onClick = { confirmReplacement = false; onSave(input) }) { Text("Rebuild and save") }
+            },
+            dismissButton = { TextButton(onClick = { confirmReplacement = false }) { Text("Cancel") } },
+        )
+    }
 }
 
 @Composable

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.motocare.app.data.local.entity.MotorcycleEntity
 import com.motocare.app.data.repository.MotorcycleRepository
 import com.motocare.app.data.repository.PreferencesRepository
+import com.motocare.app.worker.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -46,6 +47,7 @@ private data class DefaultSettings(
 class SettingsViewModel @Inject constructor(
     private val preferences: PreferencesRepository,
     motorcycles: MotorcycleRepository,
+    private val reminderScheduler: ReminderScheduler,
 ) : ViewModel() {
     private val feedback = MutableStateFlow<Pair<String, Boolean>?>(null)
     private val general = combine(
@@ -83,7 +85,10 @@ class SettingsViewModel @Inject constructor(
     fun setCurrency(value: String) = update { preferences.setCurrency(value) }
     fun setDateFormat(value: String) = update { preferences.setDateFormat(value) }
     fun setTheme(value: String) = update { preferences.setTheme(value) }
-    fun setNotificationsEnabled(value: Boolean) = update { preferences.setNotificationsEnabled(value) }
+    fun setNotificationsEnabled(value: Boolean) = update {
+        preferences.setNotificationsEnabled(value)
+        if (value) reminderScheduler.scheduleDailyCheck() else reminderScheduler.cancelDailyCheck()
+    }
     fun setMotorcycleNotificationsEnabled(id: Long, value: Boolean) = update {
         preferences.setMotorcycleNotificationsEnabled(id, value)
     }

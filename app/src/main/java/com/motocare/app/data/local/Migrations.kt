@@ -20,4 +20,25 @@ object Migrations {
             db.execSQL("ALTER TABLE motorcycles ADD COLUMN coolingType TEXT NOT NULL DEFAULT 'UNKNOWN'")
         }
     }
+
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE motorcycles ADD COLUMN initialOdometerEpochDay INTEGER")
+            db.execSQL("UPDATE motorcycles SET initialOdometerEpochDay = purchaseDateEpochDay WHERE purchaseDateEpochDay IS NOT NULL")
+            db.execSQL("ALTER TABLE odometer_entries ADD COLUMN recordedEpochDay INTEGER")
+            db.execSQL(
+                """
+                UPDATE odometer_entries
+                SET recordedEpochDay = CAST(
+                    julianday(date(recordedAtEpochMillis / 1000, 'unixepoch', 'localtime')) -
+                    julianday('1970-01-01') AS INTEGER
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_odometer_entries_motorcycleId_recordedEpochDay " +
+                    "ON odometer_entries (motorcycleId, recordedEpochDay)",
+            )
+        }
+    }
 }

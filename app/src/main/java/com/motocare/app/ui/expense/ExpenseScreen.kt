@@ -1,6 +1,7 @@
 package com.motocare.app.ui.expense
 
 import android.content.Intent
+import androidx.core.net.toUri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +48,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.asPeso
+import com.motocare.app.util.toCentavosOrNull
 import com.motocare.app.ui.components.MotoCareEmptyState
 import com.motocare.app.ui.components.MotoCareLoadingState
 import com.motocare.app.ui.components.MotoCareNoMotorcycleState
@@ -162,7 +164,7 @@ private fun ParkingDefaultDialog(current: Long, onDismiss: () -> Unit, onSave: (
         onDismissRequest = onDismiss,
         title = { Text("Default parking amount") },
         text = { OutlinedTextField(amount, { amount = it.filter { c -> c.isDigit() || c == '.' } }, label = { Text("Amount (PHP)") }) },
-        confirmButton = { TextButton(enabled = amount.toBigDecimalOrNull() != null, onClick = { onSave(amount) }) { Text("Save") } },
+        confirmButton = { TextButton(enabled = amount.toCentavosOrNull() != null, onClick = { onSave(amount) }) { Text("Save") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
@@ -202,11 +204,28 @@ private fun AddExpenseDialog(existing: ExpenseEntity?, onDismiss: () -> Unit, on
                 OutlinedTextField(payment, { payment = it }, label = { Text("Payment method") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(vendor, { vendor = it }, label = { Text("Vendor") }, modifier = Modifier.fillMaxWidth())
                 TextButton(onClick = { picker.launch(arrayOf("image/*")) }) { Text(if (receipt == null) "Attach receipt photo" else "Receipt selected") }
+                receipt?.let { uri ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        TextButton(
+                            onClick = {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Intent.ACTION_VIEW, uri.toUri()).apply {
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        },
+                                    )
+                                }
+                            },
+                        ) { Text("Open receipt") }
+                        TextButton(onClick = { receipt = null }) { Text("Remove") }
+                    }
+                }
             }
         },
         confirmButton = {
             TextButton(
-                enabled = amount.toBigDecimalOrNull() != null,
+                enabled = amount.toCentavosOrNull()?.let { it > 0 } == true &&
+                    (km.isBlank() || km.toLongOrNull() != null),
                 onClick = { onSave(ExpenseInput(date.toString(), category, amount, km, description, receipt, payment, vendor)) },
             ) { Text("Save") }
         },

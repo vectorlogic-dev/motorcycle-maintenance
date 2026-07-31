@@ -44,9 +44,8 @@ import com.motocare.app.ui.components.MotoCareDateField
 import com.motocare.app.ui.components.MotoCareSummaryCard
 import com.motocare.app.data.local.entity.OdometerEntryEntity
 import com.motocare.app.util.asDisplayDate
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
+import com.motocare.app.util.recordedDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,7 +100,7 @@ fun OdometerScreen(
                             if (entry.note.isNotBlank()) Text(entry.note)
                         }
                         Column {
-                            val date = Instant.ofEpochMilli(entry.recordedAtEpochMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+                            val date = entry.recordedDate()
                             Text(date.asDisplayDate())
                             if (entry.isCorrection) Text("Correction", color = MaterialTheme.colorScheme.tertiary)
                         }
@@ -120,11 +119,15 @@ fun OdometerScreen(
         onDismiss = { showAdd = false },
         onAdd = { km, date, note -> viewModel.add(km, date, note) { showAdd = false } },
     )
-    state.correctionPreviousKm?.let { previous ->
+    state.correctionRequired?.let { conflict ->
+        val references = listOfNotNull(
+            conflict.previousKm?.let { "previous dated reading ${"%,d".format(it)} km" },
+            conflict.nextKm?.let { "later dated reading ${"%,d".format(it)} km" },
+        ).joinToString(" and ")
         AlertDialog(
             onDismissRequest = viewModel::cancelCorrection,
             title = { Text("Confirm odometer correction") },
-            text = { Text("This reading is lower than the current ${"%,d".format(previous)} km. Save it as an explicit correction?") },
+            text = { Text("This reading conflicts with the $references. Save it as an explicit correction?") },
             confirmButton = { TextButton(onClick = { viewModel.confirmCorrection { showAdd = false } }) { Text("Save correction") } },
             dismissButton = { TextButton(onClick = viewModel::cancelCorrection) { Text("Cancel") } },
         )

@@ -49,4 +49,48 @@ class OdometerCalculatorTest {
         assertEquals(10.0, stats.averageKmPerDay, 0.001)
         assertEquals(304.375, stats.averageKmPerMonth, 0.001)
     }
+
+    @Test fun `timeline validation accepts a consistent backdated reading`() {
+        val entries = listOf(
+            OdometerEntryEntity(
+                id = 1,
+                motorcycleId = 1,
+                readingKm = 100,
+                recordedAtEpochMillis = 0,
+                recordedEpochDay = LocalDate.of(2026, 7, 20).toEpochDay(),
+            ),
+        )
+
+        assertEquals(
+            OdometerValidation.Valid,
+            calculator.validateTimeline(
+                newReadingKm = 50,
+                newEpochDay = LocalDate.of(2026, 7, 10).toEpochDay(),
+                entries = entries,
+                correctionConfirmed = false,
+            ),
+        )
+    }
+
+    @Test fun `timeline validation requires confirmation when a backdated reading exceeds a later reading`() {
+        val entries = listOf(
+            OdometerEntryEntity(
+                id = 1,
+                motorcycleId = 1,
+                readingKm = 100,
+                recordedAtEpochMillis = 0,
+                recordedEpochDay = LocalDate.of(2026, 7, 20).toEpochDay(),
+            ),
+        )
+
+        assertEquals(
+            OdometerValidation.CorrectionRequired(previousKm = null, nextKm = 100),
+            calculator.validateTimeline(
+                newReadingKm = 150,
+                newEpochDay = LocalDate.of(2026, 7, 10).toEpochDay(),
+                entries = entries,
+                correctionConfirmed = false,
+            ),
+        )
+    }
 }

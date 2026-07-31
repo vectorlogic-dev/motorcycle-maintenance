@@ -22,14 +22,14 @@ import com.motocare.app.data.local.dao.PhaseThreeDao
 import com.motocare.app.domain.usecase.CoverageCalculator
 import com.motocare.app.domain.model.MaintenanceStatus
 import com.motocare.app.domain.usecase.MaintenanceCalculator
+import com.motocare.app.domain.usecase.OdometerCalculator
 import com.motocare.app.notification.NotificationChannels
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.temporal.ChronoUnit
+import com.motocare.app.util.recordedDate
 
 @HiltWorker
 class ReminderWorker @AssistedInject constructor(
@@ -39,6 +39,7 @@ class ReminderWorker @AssistedInject constructor(
     private val motorcycles: MotorcycleRepository,
     private val preferences: PreferencesRepository,
     private val calculator: MaintenanceCalculator,
+    private val odometerCalculator: OdometerCalculator,
     private val coverageCalculator: CoverageCalculator,
     private val phaseThreeDao: PhaseThreeDao,
     private val loanDao: LoanDao,
@@ -60,6 +61,7 @@ class ReminderWorker @AssistedInject constructor(
                     id = schedule.id.toInt(),
                     title = "${schedule.name}: ${assessment.status.name.replace('_', ' ').lowercase()}",
                     body = "${bike.name} • open MotoCare to review the schedule",
+                    destination = "maintenance",
                 )
             }
         }
@@ -81,12 +83,24 @@ class ReminderWorker @AssistedInject constructor(
         }
         phaseThreeDao.getAllCoverage().filterNot { it.motorcycleId in disabledMotorcycleIds }.forEach { plan ->
             val bike = motorcycles.get(plan.motorcycleId) ?: return@forEach
-            val start = LocalDate.ofEpochDay(plan.startEpochDay)
-            val days = ChronoUnit.DAYS.between(start, today).coerceAtLeast(1)
-            val average = (bike.currentOdometerKm - bike.initialOdometerKm).coerceAtLeast(0).toDouble() / days
+            val average = odometerCalculator.stats(
+                entries = odometerDao.getForMotorcycle(bike.id),
+                initialReadingKm = bike.initialOdometerKm,
+                initialDate = (bike.initialOdometerEpochDay ?: bike.purchaseDateEpochDay)?.let(LocalDate::ofEpochDay),
+            ).averageKmPerDay
             val assessment = coverageCalculator.assess(plan, bike.currentOdometerKm, average, today)
             if (assessment.remainingDays <= 14 || assessment.remainingKm <= 500) {
-                notify(300_000 + plan.id.toInt(), "Maintenance coverage ending", "${bike.name} • ${assessment.remainingDays} days or ${assessment.remainingKm} km remaining")
+                val timing = when {
+                    assessment.remainingDays < 0 -> "${-assessment.remainingDays} days past the recorded end date"
+                    assessment.remainingKm < 0 -> "${-assessment.remainingKm} km past the recorded limit"
+                    else -> "${assessment.remainingDays} days or ${assessment.remainingKm} km remaining"
+                }
+                notify(
+                    300_000 + plan.id.toInt(),
+                    "Maintenance coverage ending",
+                    "${bike.name} • $timing",
+                    "coverage",
+                )
             }
         }
         loanDao.getAllLoans().filterNot { it.motorcycleId in disabledMotorcycleIds }.forEach { loan ->
@@ -95,27 +109,40 @@ class ReminderWorker @AssistedInject constructor(
                 val days = ChronoUnit.DAYS.between(today, LocalDate.ofEpochDay(next.dueEpochDay))
                 if (days <= 3) motorcycles.get(loan.motorcycleId)?.let { bike ->
                     val timing = if (days < 0) "${-days} days overdue" else if (days == 0L) "due today" else "due in $days days"
-                    notify(400_000 + loan.id.toInt(), "Loan payment due", "${bike.name} • payment ${next.installmentNumber} is $timing")
+                    notify(
+                        400_000 + loan.id.toInt(),
+                        "Loan payment due",
+                        "${bike.name} • payment ${next.installmentNumber} is $timing",
+                        "loan",
+                    )
                 }
             }
         }
         val staleDays = preferences.staleOdometerDays.first()
         activeBikes.forEach { bike ->
             val latest = odometerDao.latest(bike.id) ?: return@forEach
-            val lastDate = Instant.ofEpochMilli(latest.recordedAtEpochMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+            val lastDate = latest.recordedDate()
             if (ChronoUnit.DAYS.between(lastDate, today) >= staleDays) {
-                notify(500_000 + bike.id.toInt(), "Update ${bike.name} odometer", "No odometer update for $staleDays days")
+                notify(
+                    500_000 + bike.id.toInt(),
+                    "Update ${bike.name} odometer",
+                    "No odometer update for $staleDays days",
+                    "odometer/add",
+                )
             }
         }
         Result.success()
     }.getOrElse { Result.retry() }
 
-    private fun notify(id: Int, title: String, body: String) {
+    private fun notify(id: Int, title: String, body: String, destination: String) {
         if (ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
         val intent = PendingIntent.getActivity(
             applicationContext,
-            0,
-            Intent(applicationContext, MainActivity::class.java),
+            id,
+            Intent(applicationContext, MainActivity::class.java).apply {
+                action = "com.motocare.app.OPEN_$id"
+                putExtra(MainActivity.EXTRA_DESTINATION, destination)
+            },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val notification = NotificationCompat.Builder(applicationContext, NotificationChannels.REMINDERS)
@@ -131,7 +158,13 @@ class ReminderWorker @AssistedInject constructor(
     private suspend fun notifyDate(motorcycleId: Long, offset: Int, label: String, expiryEpochDay: Long, today: LocalDate) {
         val days = ChronoUnit.DAYS.between(today, LocalDate.ofEpochDay(expiryEpochDay))
         if (days <= 30) motorcycles.get(motorcycleId)?.let { bike ->
-            notify(offset + motorcycleId.toInt(), "$label ${if (days < 0) "overdue" else "expiring"}", "${bike.name} • $days days remaining")
+            val timing = if (days < 0) "${-days} days overdue" else if (days == 0L) "expires today" else "$days days remaining"
+            notify(
+                offset + motorcycleId.toInt(),
+                "$label ${if (days < 0) "overdue" else "expiring"}",
+                "${bike.name} • $timing",
+                "documents",
+            )
         }
     }
 }

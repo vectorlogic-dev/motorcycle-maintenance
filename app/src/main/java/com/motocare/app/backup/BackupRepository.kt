@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.Cursor
 import android.net.Uri
 import androidx.room.withTransaction
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.motocare.app.data.local.MotoCareDatabase
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -12,6 +13,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
+import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -38,14 +40,17 @@ class BackupRepository @Inject constructor(
     )
 
     suspend fun writeJson(uri: Uri) = withContext(Dispatchers.IO) {
-        val db = database.openHelper.readableDatabase
-        val tableData = JSONObject()
-        tables.forEach { table ->
-            db.query("SELECT * FROM $table").use { cursor -> tableData.put(table, cursor.toJson()) }
+        val tableData = database.withTransaction {
+            val db = database.openHelper.readableDatabase
+            JSONObject().also { snapshot ->
+                tables.forEach { table ->
+                    db.query("SELECT * FROM $table").use { cursor -> snapshot.put(table, cursor.toJson()) }
+                }
+            }
         }
         val root = JSONObject()
             .put("format", "MotoCare backup")
-            .put("schemaVersion", 3)
+            .put("schemaVersion", 4)
             .put("exportedAt", Instant.now().toString())
             .put("tables", tableData)
         context.contentResolver.openOutputStream(uri, "wt")?.bufferedWriter()?.use { it.write(root.toString(2)) }
@@ -62,7 +67,7 @@ class BackupRepository @Inject constructor(
         val root = JSONObject(text)
         require(root.optString("format") == "MotoCare backup") { "Not a MotoCare backup" }
         val schemaVersion = root.optInt("schemaVersion")
-        require(schemaVersion in 1..3) { "Unsupported backup version" }
+        require(schemaVersion in 1..4) { "Unsupported backup version" }
         val data = root.getJSONObject("tables")
         database.withTransaction {
             val db = database.openHelper.writableDatabase
@@ -74,7 +79,9 @@ class BackupRepository @Inject constructor(
                     if (table == "motorcycles") {
                         if (schemaVersion == 1) row.upgradeMotorcycleFromV1()
                         if (schemaVersion <= 2) row.upgradeMotorcycleFromV2()
+                        if (schemaVersion <= 3) row.upgradeMotorcycleFromV3()
                     }
+                    if (table == "odometer_entries" && schemaVersion <= 3) row.upgradeOdometerFromV3()
                     val values = ContentValues()
                     row.keys().forEach { key -> values.putJson(key, row.get(key)) }
                     check(db.insert(table, android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE, values) != -1L) {
@@ -82,11 +89,33 @@ class BackupRepository @Inject constructor(
                     }
                 }
             }
+            validateAttachmentOwners(db)
             db.query("PRAGMA foreign_key_check").use { cursor ->
                 check(!cursor.moveToFirst()) { "Backup contains broken record relationships" }
             }
         }
         database.invalidationTracker.refreshAsync()
+    }
+
+    private fun validateAttachmentOwners(db: SupportSQLiteDatabase) {
+        val orphanCount = db.query(
+            """
+            SELECT COUNT(*)
+            FROM attachment_references AS attachment
+            WHERE
+                (attachment.ownerType = 'SERVICE_RECORD' AND NOT EXISTS (
+                    SELECT 1 FROM service_records WHERE id = attachment.ownerId
+                ))
+                OR (attachment.ownerType = 'PROBLEM' AND NOT EXISTS (
+                    SELECT 1 FROM problem_logs WHERE id = attachment.ownerId
+                ))
+                OR attachment.ownerType NOT IN ('SERVICE_RECORD', 'PROBLEM')
+            """.trimIndent(),
+        ).use { cursor ->
+            check(cursor.moveToFirst())
+            cursor.getLong(0)
+        }
+        check(orphanCount == 0L) { "Backup contains attachments without matching records" }
     }
 
     private fun JSONObject.upgradeMotorcycleFromV1() {
@@ -99,6 +128,23 @@ class BackupRepository @Inject constructor(
     private fun JSONObject.upgradeMotorcycleFromV2() {
         if (!has("driveType")) put("driveType", "UNKNOWN")
         if (!has("coolingType")) put("coolingType", "UNKNOWN")
+    }
+
+    private fun JSONObject.upgradeMotorcycleFromV3() {
+        if (!has("initialOdometerEpochDay")) {
+            put(
+                "initialOdometerEpochDay",
+                if (has("purchaseDateEpochDay") && !isNull("purchaseDateEpochDay")) getLong("purchaseDateEpochDay") else JSONObject.NULL,
+            )
+        }
+    }
+
+    private fun JSONObject.upgradeOdometerFromV3() {
+        if (!has("recordedEpochDay")) {
+            val millis = optLong("recordedAtEpochMillis")
+            val date = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+            put("recordedEpochDay", date.toEpochDay())
+        }
     }
 
     suspend fun writeCsv(uri: Uri, table: String) = withContext(Dispatchers.IO) {

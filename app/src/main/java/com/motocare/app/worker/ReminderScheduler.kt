@@ -22,4 +22,8 @@ class ReminderScheduler @Inject constructor(@param:ApplicationContext private va
             request,
         )
     }
+
+    fun cancelDailyCheck() {
+        WorkManager.getInstance(context).cancelUniqueWork("daily_motocare_reminders")
+    }
 }

@@ -1,6 +1,7 @@
 package com.motocare.app.ui.problem
 
 import android.content.Intent
+import androidx.core.net.toUri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -153,8 +154,29 @@ private fun AddProblemDialog(existing: ProblemLogEntity?, currentKm: Long, onDis
             OutlinedTextField(symptom, { symptom = it }, label = { Text("Symptom") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(description, { description = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
             TextButton(onClick = { picker.launch(arrayOf("image/*", "video/*")) }) { Text(if (media == null) "Attach photo or video" else "Media selected") }
+            media?.let { uri ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(
+                        onClick = {
+                            runCatching {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, uri.toUri()).apply {
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    },
+                                )
+                            }
+                        },
+                    ) { Text("Open media") }
+                    TextButton(onClick = { media = null }) { Text("Remove") }
+                }
+            }
         }
-    }, confirmButton = { TextButton(enabled = symptom.isNotBlank(), onClick = { onSave(ProblemInput(date.toString(), km, severity, symptom, description, media)) }) { Text("Save") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
+    }, confirmButton = {
+        TextButton(
+            enabled = symptom.isNotBlank() && (km.isBlank() || km.toLongOrNull() != null),
+            onClick = { onSave(ProblemInput(date.toString(), km, severity, symptom, description, media)) },
+        ) { Text("Save") }
+    }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
 }
 
 @Composable

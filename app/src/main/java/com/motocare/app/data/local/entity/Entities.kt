@@ -21,6 +21,7 @@ data class MotorcycleEntity(
     val driveType: String = "UNKNOWN",
     val coolingType: String = "UNKNOWN",
     val initialOdometerKm: Long,
+    val initialOdometerEpochDay: Long? = null,
     val currentOdometerKm: Long,
     val plateNumber: String = "",
     val engineNumber: String = "",
@@ -42,13 +43,18 @@ data class MotorcycleEntity(
         childColumns = ["motorcycleId"],
         onDelete = ForeignKey.CASCADE,
     )],
-    indices = [Index("motorcycleId"), Index(value = ["motorcycleId", "recordedAtEpochMillis"])],
+    indices = [
+        Index("motorcycleId"),
+        Index(value = ["motorcycleId", "recordedAtEpochMillis"]),
+        Index(value = ["motorcycleId", "recordedEpochDay"]),
+    ],
 )
 data class OdometerEntryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val motorcycleId: Long,
     val readingKm: Long,
     val recordedAtEpochMillis: Long,
+    val recordedEpochDay: Long? = null,
     val note: String = "",
     val isCorrection: Boolean = false,
 )

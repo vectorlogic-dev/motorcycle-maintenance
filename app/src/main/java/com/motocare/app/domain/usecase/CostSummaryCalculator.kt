@@ -4,6 +4,7 @@ import com.motocare.app.data.local.entity.ExpenseEntity
 import com.motocare.app.data.local.entity.FuelEntryEntity
 import com.motocare.app.data.local.entity.ServiceRecordEntity
 import com.motocare.app.domain.model.CostSummary
+import com.motocare.app.domain.model.DatedCost
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
@@ -14,26 +15,30 @@ class CostSummaryCalculator @Inject constructor() {
         fuel: List<FuelEntryEntity>,
         services: List<ServiceRecordEntity>,
         travelledKm: Long,
-        additionalOwnershipCostCentavos: Long = 0,
+        ownershipCosts: List<DatedCost> = emptyList(),
         today: LocalDate = LocalDate.now(),
     ): CostSummary {
         fun ExpenseEntity.amount() = amountCentavos
         fun ServiceRecordEntity.amount() = labourCostCentavos + partsCostCentavos
         val todayCost = expenses.filter { it.dateEpochDay == today.toEpochDay() }.sumOf { it.amount() } +
             fuel.filter { it.dateEpochDay == today.toEpochDay() }.sumOf { it.totalCostCentavos } +
-            services.filter { it.serviceEpochDay == today.toEpochDay() }.sumOf { it.amount() }
+            services.filter { it.serviceEpochDay == today.toEpochDay() }.sumOf { it.amount() } +
+            ownershipCosts.filter { it.epochDay == today.toEpochDay() }.sumOf { it.amountCentavos }
         val month = YearMonth.from(today)
         val monthCost = expenses.filter { YearMonth.from(LocalDate.ofEpochDay(it.dateEpochDay)) == month }.sumOf { it.amount() } +
             fuel.filter { YearMonth.from(LocalDate.ofEpochDay(it.dateEpochDay)) == month }.sumOf { it.totalCostCentavos } +
-            services.filter { YearMonth.from(LocalDate.ofEpochDay(it.serviceEpochDay)) == month }.sumOf { it.amount() }
+            services.filter { YearMonth.from(LocalDate.ofEpochDay(it.serviceEpochDay)) == month }.sumOf { it.amount() } +
+            ownershipCosts.filter { YearMonth.from(LocalDate.ofEpochDay(it.epochDay)) == month }.sumOf { it.amountCentavos }
         val yearCost = expenses.filter { LocalDate.ofEpochDay(it.dateEpochDay).year == today.year }.sumOf { it.amount() } +
             fuel.filter { LocalDate.ofEpochDay(it.dateEpochDay).year == today.year }.sumOf { it.totalCostCentavos } +
-            services.filter { LocalDate.ofEpochDay(it.serviceEpochDay).year == today.year }.sumOf { it.amount() }
+            services.filter { LocalDate.ofEpochDay(it.serviceEpochDay).year == today.year }.sumOf { it.amount() } +
+            ownershipCosts.filter { LocalDate.ofEpochDay(it.epochDay).year == today.year }.sumOf { it.amountCentavos }
         val fuelCost = fuel.sumOf { it.totalCostCentavos }
         val maintenanceCost = services.sumOf { it.amount() } + expenses
             .filter { it.category == "MAINTENANCE" || it.category == "REPAIRS" }
             .sumOf { it.amountCentavos }
-        val total = expenses.sumOf { it.amount() } + fuelCost + services.sumOf { it.amount() } + additionalOwnershipCostCentavos
+        val total = expenses.sumOf { it.amount() } + fuelCost + services.sumOf { it.amount() } +
+            ownershipCosts.sumOf { it.amountCentavos }
         return CostSummary(
             todayCentavos = todayCost,
             monthCentavos = monthCost,

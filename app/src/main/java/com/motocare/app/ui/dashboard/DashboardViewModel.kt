@@ -31,6 +31,7 @@ import com.motocare.app.domain.usecase.FuelEconomyCalculator
 import com.motocare.app.domain.usecase.LoanCalculator
 import com.motocare.app.domain.usecase.MaintenanceCalculator
 import com.motocare.app.domain.usecase.OdometerCalculator
+import com.motocare.app.domain.usecase.OwnershipCostTimeline
 import com.motocare.app.ui.statsFor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -62,11 +63,32 @@ data class DashboardUiState(
     val unresolvedProblems: List<ProblemLogEntity> = emptyList(),
     val isLoading: Boolean = true,
 ) {
-    val dueSoonCount: Int get() = schedules.count { it.assessment.status == MaintenanceStatus.DUE_SOON }
+    val needsAttentionCount: Int get() = schedules.count {
+        it.assessment.status == MaintenanceStatus.DUE_SOON || it.assessment.status == MaintenanceStatus.DUE
+    }
     val overdueCount: Int get() = schedules.count { it.assessment.status == MaintenanceStatus.OVERDUE }
     val nextSchedule: ScheduleRow? get() = schedules
         .filter { it.schedule.nextDueEpochDay != null || it.schedule.nextDueOdometerKm != null }
-        .minByOrNull { minOf(it.assessment.remainingKm ?: Long.MAX_VALUE, it.assessment.remainingDays ?: Long.MAX_VALUE) }
+        .minWithOrNull(
+            compareBy<ScheduleRow>(
+                {
+                    when (it.assessment.status) {
+                        MaintenanceStatus.OVERDUE -> 0
+                        MaintenanceStatus.DUE -> 1
+                        MaintenanceStatus.DUE_SOON -> 2
+                        MaintenanceStatus.GOOD -> 3
+                    }
+                },
+                {
+                    val distanceDays = if (odometerStats.averageKmPerDay > 0) {
+                        it.assessment.remainingKm?.toDouble()?.div(odometerStats.averageKmPerDay)
+                    } else null
+                    listOfNotNull(it.assessment.remainingDays?.toDouble(), distanceDays).minOrNull()
+                        ?: Double.MAX_VALUE
+                },
+                { it.assessment.remainingKm ?: Long.MAX_VALUE },
+            ),
+        )
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -89,6 +111,7 @@ class DashboardViewModel @Inject constructor(
     costCalculator: CostSummaryCalculator,
     fuelCalculator: FuelEconomyCalculator,
     loanCalculator: LoanCalculator,
+    ownershipCostTimeline: OwnershipCostTimeline,
 ) : ViewModel() {
     private val selection = combine(motorcycles.activeMotorcycles, preferences.selectedMotorcycleId) { bikes, preferred ->
         bikes to (bikes.firstOrNull { it.id == preferred } ?: bikes.firstOrNull())
@@ -130,24 +153,12 @@ class DashboardViewModel @Inject constructor(
         val (registrationRecord, insuranceRecord, issues) = records
         val loanSummary = agreement?.let { loanCalculator.calculate(it, installments) }
         val month = YearMonth.now()
-        val today = LocalDate.now()
-        val paidInstallments = installments.filter { it.status == "PAID_ON_TIME" || it.status == "PAID_LATE" }
-        val downPaymentDate = agreement?.startEpochDay?.let(LocalDate::ofEpochDay)
-        val loanToday = paidInstallments.filter { it.paidEpochDay == today.toEpochDay() }.sumOf { it.amountCentavos } +
-            if (downPaymentDate == today) agreement?.downPaymentCentavos ?: 0 else 0
-        val loanMonth = paidInstallments.filter { it.paidEpochDay?.let(LocalDate::ofEpochDay)?.let(YearMonth::from) == month }.sumOf { it.amountCentavos } +
-            if (downPaymentDate?.let(YearMonth::from) == month) agreement?.downPaymentCentavos ?: 0 else 0
-        val loanYear = paidInstallments.filter { it.paidEpochDay?.let(LocalDate::ofEpochDay)?.year == today.year }.sumOf { it.amountCentavos } +
-            if (downPaymentDate?.year == today.year) agreement?.downPaymentCentavos ?: 0 else 0
-        val baseCost = costCalculator.calculate(costs, fills, history, stats.travelledKm, loanSummary?.totalPaidCentavos ?: 0)
+        val ownershipCosts = ownershipCostTimeline.build(selected, agreement, installments)
+        val baseCost = costCalculator.calculate(costs, fills, history, stats.travelledKm, ownershipCosts)
         state.copy(
             coverage = if (plan != null && selected != null) coverageCalculator.assess(plan, selected.currentOdometerKm, stats.averageKmPerDay) else null,
             loan = loanSummary,
-            cost = baseCost.copy(
-                todayCentavos = baseCost.todayCentavos + loanToday,
-                monthCentavos = baseCost.monthCentavos + loanMonth,
-                yearCentavos = baseCost.yearCentavos + loanYear,
-            ),
+            cost = baseCost,
             fuel = fuelCalculator.calculate(fills),
             monthFuelCentavos = fills.filter { YearMonth.from(LocalDate.ofEpochDay(it.dateEpochDay)) == month }.sumOf { it.totalCostCentavos },
             monthParkingCentavos = costs.filter { it.category == "PARKING" && YearMonth.from(LocalDate.ofEpochDay(it.dateEpochDay)) == month }.sumOf { it.amountCentavos },

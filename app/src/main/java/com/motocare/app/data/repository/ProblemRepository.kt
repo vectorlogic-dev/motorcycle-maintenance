@@ -16,8 +16,9 @@ class ProblemRepository @Inject constructor(private val database: MotoCareDataba
         val id = if (problem.id == 0L) database.phaseThreeDao().insertProblem(problem) else {
             database.phaseThreeDao().updateProblem(problem); problem.id
         }
+        database.attachmentDao().deleteForOwner("PROBLEM", id)
         mediaUri?.let {
-            database.phaseThreeDao().insertAttachment(
+            database.attachmentDao().insert(
                 AttachmentReferenceEntity(ownerType = "PROBLEM", ownerId = id, uri = it, mediaType = "image/*"),
             )
         }
@@ -27,7 +28,7 @@ class ProblemRepository @Inject constructor(private val database: MotoCareDataba
     suspend fun unresolved(): List<ProblemLogEntity> = database.phaseThreeDao().getAllUnresolvedProblems()
 
     suspend fun delete(problem: ProblemLogEntity) = database.withTransaction {
-        database.phaseThreeDao().deleteAttachments("PROBLEM", problem.id)
+        database.attachmentDao().deleteForOwner("PROBLEM", problem.id)
         database.phaseThreeDao().deleteProblem(problem)
     }
 }

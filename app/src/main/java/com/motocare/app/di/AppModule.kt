@@ -13,6 +13,7 @@ import com.motocare.app.data.local.dao.OdometerDao
 import com.motocare.app.data.local.dao.PhaseTwoDao
 import com.motocare.app.data.local.dao.ServiceDao
 import com.motocare.app.data.local.dao.PhaseThreeDao
+import com.motocare.app.data.local.dao.AttachmentDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,7 +28,7 @@ object AppModule {
     @Singleton
     fun database(@ApplicationContext context: Context): MotoCareDatabase =
         Room.databaseBuilder(context, MotoCareDatabase::class.java, "motocare.db")
-            .addMigrations(Migrations.MIGRATION_1_2, Migrations.MIGRATION_2_3)
+            .addMigrations(Migrations.MIGRATION_1_2, Migrations.MIGRATION_2_3, Migrations.MIGRATION_3_4)
             .build()
 
     @Provides fun motorcycleDao(db: MotoCareDatabase): MotorcycleDao = db.motorcycleDao()
@@ -39,4 +40,5 @@ object AppModule {
     @Provides fun fuelDao(db: MotoCareDatabase): FuelDao = db.fuelDao()
     @Provides fun loanDao(db: MotoCareDatabase): LoanDao = db.loanDao()
     @Provides fun phaseThreeDao(db: MotoCareDatabase): PhaseThreeDao = db.phaseThreeDao()
+    @Provides fun attachmentDao(db: MotoCareDatabase): AttachmentDao = db.attachmentDao()
 }

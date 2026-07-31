@@ -10,6 +10,7 @@ import javax.inject.Singleton
 class MaintenanceRepository @Inject constructor(private val dao: MaintenanceDao) {
     fun observeActive(motorcycleId: Long): Flow<List<MaintenanceScheduleEntity>> = dao.observeActive(motorcycleId)
     suspend fun getAllActive(): List<MaintenanceScheduleEntity> = dao.getAllActive()
+    suspend fun getAllForMotorcycle(motorcycleId: Long): List<MaintenanceScheduleEntity> = dao.getAllForMotorcycle(motorcycleId)
     suspend fun add(schedule: MaintenanceScheduleEntity): Long = dao.insert(schedule)
     suspend fun addAll(schedules: List<MaintenanceScheduleEntity>) {
         if (schedules.isNotEmpty()) dao.insertAll(schedules)

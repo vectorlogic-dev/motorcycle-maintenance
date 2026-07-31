@@ -63,31 +63,40 @@ class LoanViewModel @Inject constructor(
         viewModelScope.launch { selected.filterNotNull().collect { repository.ensurePayments(it.id) } }
     }
 
-    fun configure(input: LoanInput, onSaved: () -> Unit) {
+    fun configure(input: LoanInput, existing: LoanEntity? = null, onSaved: () -> Unit) {
         val bike = uiState.value.motorcycle ?: return
         val monthly = input.monthlyPayment.toCentavosOrNull() ?: return
         val term = input.termMonths.toIntOrNull()?.takeIf { it > 0 } ?: return
         val start = runCatching { LocalDate.parse(input.startDate) }.getOrNull() ?: return
+        val cashPrice = input.cashPrice.takeIf { it.isNotBlank() }?.toCentavosOrNull()
+        if (input.cashPrice.isNotBlank() && cashPrice == null) return
+        val downPayment = input.downPayment.takeIf { it.isNotBlank() }?.toCentavosOrNull()
+        if (input.downPayment.isNotBlank() && downPayment == null) return
+        val rebate = input.rebate.takeIf { it.isNotBlank() }?.toCentavosOrNull()
+        if (input.rebate.isNotBlank() && rebate == null) return
+        val dueDay = input.dueDay.takeIf { it.isNotBlank() }?.toIntOrNull()?.takeIf { it in 1..31 }
+        if (input.dueDay.isNotBlank() && dueDay == null) return
+        val replacement = LoanEntity(
+            motorcycleId = bike.id,
+            cashPriceCentavos = cashPrice,
+            downPaymentCentavos = downPayment ?: 0,
+            monthlyPaymentCentavos = monthly,
+            termMonths = term,
+            paymentDueDay = dueDay,
+            rebateCentavos = rebate ?: 0,
+            startEpochDay = start.toEpochDay(),
+            notes = input.notes.trim(),
+        )
         viewModelScope.launch {
-            repository.configure(
-                LoanEntity(
-                    motorcycleId = bike.id,
-                    cashPriceCentavos = input.cashPrice.toCentavosOrNull(),
-                    downPaymentCentavos = input.downPayment.toCentavosOrNull() ?: 0,
-                    monthlyPaymentCentavos = monthly,
-                    termMonths = term,
-                    paymentDueDay = input.dueDay.toIntOrNull()?.coerceIn(1, 31),
-                    rebateCentavos = input.rebate.toCentavosOrNull() ?: 0,
-                    startEpochDay = start.toEpochDay(),
-                    notes = input.notes.trim(),
-                ),
-            )
+            if (existing == null) repository.configure(replacement) else repository.replace(existing, replacement)
             onSaved()
         }
     }
 
-    fun mark(payment: LoanPaymentEntity, status: String) {
+    fun mark(payment: LoanPaymentEntity, status: String, paidDate: LocalDate = LocalDate.now()) {
         val loan = uiState.value.loan ?: return
-        viewModelScope.launch { repository.markPayment(payment, status, loan) }
+        viewModelScope.launch { repository.markPayment(payment, status, loan, paidDate) }
     }
+
+    fun delete(loan: LoanEntity) = viewModelScope.launch { repository.delete(loan) }
 }

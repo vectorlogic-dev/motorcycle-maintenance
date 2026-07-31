@@ -70,4 +70,40 @@ class MigrationTest {
             }
         }
     }
+
+    @Test
+    fun migrate3To4_addsDateOnlyOdometerFieldsWithoutLosingHistory() {
+        val databaseName = "migration-test-3-4"
+        helper.createDatabase(databaseName, 3).apply {
+            execSQL(
+                """INSERT INTO motorcycles
+                    (id,name,manufacturer,model,variant,year,purchaseDateEpochDay,purchaseType,purchasePriceCentavos,
+                    seller,secondHand,driveType,coolingType,initialOdometerKm,currentOdometerKm,plateNumber,engineNumber,
+                    chassisNumber,registrationExpiryEpochDay,insuranceExpiryEpochDay,isFinanced,notes,photoUri,archived,
+                    createdAtEpochMillis)
+                    VALUES (1,'Click','Honda','Click125','',NULL,20650,'CASH',NULL,'',0,'BELT','LIQUID',10,40,'','','',
+                    NULL,NULL,0,'',NULL,0,0)
+                """.trimIndent(),
+            )
+            execSQL(
+                """INSERT INTO odometer_entries
+                    (id,motorcycleId,readingKm,recordedAtEpochMillis,note,isCorrection)
+                    VALUES (1,1,40,1784131200000,'Reading',0)
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        helper.runMigrationsAndValidate(databaseName, 4, true, Migrations.MIGRATION_3_4).use { db ->
+            db.query("SELECT initialOdometerEpochDay FROM motorcycles WHERE id=1").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(20650L, cursor.getLong(0))
+            }
+            db.query("SELECT readingKm,recordedEpochDay FROM odometer_entries WHERE id=1").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(40L, cursor.getLong(0))
+                assertEquals(false, cursor.isNull(1))
+            }
+        }
+    }
 }

@@ -1,6 +1,7 @@
 package com.motocare.app.ui.motorcycle
 
 import android.content.Intent
+import androidx.core.net.toUri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -59,21 +60,26 @@ import com.motocare.app.ui.components.MotoCareIconBadge
 import java.time.LocalDate
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.toCentavosOrNull
+import com.motocare.app.util.isBlankOrValidMoney
 import com.motocare.app.ui.components.MotoCareOptionalDateField
+import com.motocare.app.ui.components.MotoCareDateField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MotorcyclesScreen(contentPadding: PaddingValues, viewModel: MotorcyclesViewModel = hiltViewModel()) {
     val motorcycles by viewModel.motorcycles.collectAsStateWithLifecycle()
+    val archivedMotorcycles by viewModel.archivedMotorcycles.collectAsStateWithLifecycle()
+    val scheduleSuggestion by viewModel.scheduleSuggestion.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<MotorcycleEntity?>(null) }
     var adding by remember { mutableStateOf(false) }
     var archiveTarget by remember { mutableStateOf<MotorcycleEntity?>(null) }
+    var deleteArchivedTarget by remember { mutableStateOf<MotorcycleEntity?>(null) }
     Scaffold(
         modifier = Modifier.padding(contentPadding),
         topBar = { TopAppBar(title = { Text("Motorcycles") }) },
         floatingActionButton = { FloatingActionButton(onClick = { adding = true }) { Icon(Icons.Outlined.Add, "Add motorcycle") } },
     ) { inner ->
-        if (motorcycles.isEmpty()) {
+        if (motorcycles.isEmpty() && archivedMotorcycles.isEmpty()) {
             Column(Modifier.fillMaxSize().padding(inner).padding(24.dp), verticalArrangement = Arrangement.Center) {
                 MotoCareEmptyState(
                     title = "Your garage is empty",
@@ -85,6 +91,17 @@ fun MotorcyclesScreen(contentPadding: PaddingValues, viewModel: MotorcyclesViewM
             }
         } else {
             LazyColumn(Modifier.fillMaxSize().padding(inner), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (motorcycles.isEmpty()) {
+                    item {
+                        MotoCareEmptyState(
+                            title = "No active motorcycles",
+                            detail = "Restore an archived motorcycle below or add a new one.",
+                            icon = Icons.Outlined.TwoWheeler,
+                            actionLabel = "Add motorcycle",
+                            onAction = { adding = true },
+                        )
+                    }
+                }
                 items(motorcycles, key = { it.id }) { bike ->
                     Card(
                         Modifier.fillMaxWidth().clickable { editing = bike },
@@ -119,6 +136,34 @@ fun MotorcyclesScreen(contentPadding: PaddingValues, viewModel: MotorcyclesViewM
                         }
                     }
                 }
+                if (archivedMotorcycles.isNotEmpty()) {
+                    item {
+                        Text(
+                            "Archived motorcycles",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(top = 12.dp),
+                        )
+                    }
+                    items(archivedMotorcycles, key = { "archived-${it.id}" }) { bike ->
+                        Card(
+                            Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                        ) {
+                            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(bike.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    listOf(bike.manufacturer, bike.model).filter { it.isNotBlank() }.joinToString(" "),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    TextButton(onClick = { viewModel.restore(bike.id) }) { Text("Restore") }
+                                    TextButton(onClick = { deleteArchivedTarget = bike }) { Text("Delete permanently") }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -138,6 +183,41 @@ fun MotorcyclesScreen(contentPadding: PaddingValues, viewModel: MotorcyclesViewM
             dismissButton = { TextButton(onClick = { archiveTarget = null }) { Text("Cancel") } },
         )
     }
+    scheduleSuggestion?.let { suggestion ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissSuggestedSchedules,
+            title = { Text("Add matching maintenance items?") },
+            text = {
+                Text(
+                    "${suggestion.motorcycleName}'s equipment now matches:\n" +
+                        suggestion.schedules.joinToString("\n") { "• ${it.name}" } +
+                        "\n\nExisting schedules and edits will not be changed.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::addSuggestedSchedules) { Text("Add items") }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissSuggestedSchedules) { Text("Not now") }
+            },
+        )
+    }
+    deleteArchivedTarget?.let { bike ->
+        AlertDialog(
+            onDismissRequest = { deleteArchivedTarget = null },
+            title = { Text("Delete ${bike.name} permanently?") },
+            text = { Text("This removes the motorcycle and all of its MotoCare records from this device. This cannot be undone unless you restore a backup.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deletePermanently(bike.id)
+                        deleteArchivedTarget = null
+                    },
+                ) { Text("Delete permanently") }
+            },
+            dismissButton = { TextButton(onClick = { deleteArchivedTarget = null }) { Text("Cancel") } },
+        )
+    }
 }
 
 @Composable
@@ -155,6 +235,12 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
     var driveType by remember(existing) { mutableStateOf(existing?.driveType ?: "UNKNOWN") }
     var coolingType by remember(existing) { mutableStateOf(existing?.coolingType ?: "UNKNOWN") }
     var initialKm by remember(existing) { mutableStateOf(existing?.initialOdometerKm?.toString() ?: "1") }
+    var initialOdometerDate by remember(existing) {
+        mutableStateOf(
+            (existing?.initialOdometerEpochDay ?: existing?.purchaseDateEpochDay)
+                ?.let(LocalDate::ofEpochDay) ?: LocalDate.now(),
+        )
+    }
     var plate by remember(existing) { mutableStateOf(existing?.plateNumber.orEmpty()) }
     var engine by remember(existing) { mutableStateOf(existing?.engineNumber.orEmpty()) }
     var chassis by remember(existing) { mutableStateOf(existing?.chassisNumber.orEmpty()) }
@@ -171,7 +257,10 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
             photoUri = uri.toString()
         }
     }
-    val valid = name.isNotBlank() && maker.isNotBlank() && model.isNotBlank() && initialKm.toLongOrNull() != null
+    val valid = name.isNotBlank() && maker.isNotBlank() && model.isNotBlank() &&
+        initialKm.toLongOrNull()?.let { it >= 0 } == true &&
+        initialOdometerDate <= LocalDate.now() &&
+        purchasePrice.isBlankOrValidMoney()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -207,6 +296,7 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
                 Field(seller, { seller = it }, "Dealer or seller")
                 Row { Checkbox(secondHand, { secondHand = it }); Text("Bought second-hand", Modifier.padding(top = 12.dp)) }
                 if (existing == null) Field(initialKm, { initialKm = it.filter(Char::isDigit) }, "Initial odometer (km)")
+                MotoCareDateField(initialOdometerDate, { initialOdometerDate = it }, label = "Initial odometer date")
                 Field(plate, { plate = it }, "Plate number")
                 MotoCareOptionalDateField(registration, { registration = it }, "Registration expiry")
                 MotoCareOptionalDateField(insurance, { insurance = it }, "Insurance expiry")
@@ -217,7 +307,22 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
                     Field(chassis, { chassis = it }, "Chassis number (optional)")
                 }
                 TextButton(onClick = { photoPicker.launch(arrayOf("image/*")) }) { Text(if (photoUri.isBlank()) "Choose motorcycle photo" else "Change motorcycle photo") }
-                if (photoUri.isNotBlank()) Text("Photo selected", style = MaterialTheme.typography.bodySmall)
+                if (photoUri.isNotBlank()) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        TextButton(
+                            onClick = {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Intent.ACTION_VIEW, photoUri.toUri()).apply {
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        },
+                                    )
+                                }
+                            },
+                        ) { Text("Open photo") }
+                        TextButton(onClick = { photoUri = "" }) { Text("Remove") }
+                    }
+                }
                 Field(notes, { notes = it }, "Notes", singleLine = false)
             }
         },
@@ -235,6 +340,7 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
                         purchaseType = purchaseType, purchasePriceCentavos = purchasePrice.toCentavosOrNull(), seller = seller.trim(), secondHand = secondHand,
                         driveType = driveType, coolingType = coolingType,
                         initialOdometerKm = if (existing == null) initialKm.toLong() else base.initialOdometerKm,
+                        initialOdometerEpochDay = initialOdometerDate.toEpochDay(),
                         plateNumber = plate.trim(), engineNumber = engine.trim(), chassisNumber = chassis.trim(),
                         registrationExpiryEpochDay = registration?.toEpochDay(), insuranceExpiryEpochDay = insurance?.toEpochDay(),
                         isFinanced = financed, notes = notes.trim(), photoUri = photoUri.trim().ifEmpty { null },

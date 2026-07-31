@@ -74,13 +74,16 @@ class MaintenanceViewModel @Inject constructor(
     fun addStarterSchedule() {
         val bike = uiState.value.motorcycle ?: return
         viewModelScope.launch {
+            val existingNames = repository.getAllForMotorcycle(bike.id)
+                .map { it.name.trim().lowercase() }
+                .toSet()
             repository.addAll(
                 starterSchedules.create(
                     motorcycleId = bike.id,
                     currentOdometerKm = bike.currentOdometerKm,
                     driveType = bike.driveType,
                     coolingType = bike.coolingType,
-                ),
+                ).filterNot { it.name.trim().lowercase() in existingNames },
             )
         }
     }

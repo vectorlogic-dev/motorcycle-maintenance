@@ -23,4 +23,11 @@ fun Long.asPeso(): String = NumberFormat.getCurrencyInstance(
 ).apply { currency = Currency.getInstance(DisplayFormats.currencyCode) }.format(this / 100.0)
 
 fun LocalDate.asDisplayDate(): String = format(DateTimeFormatter.ofPattern(DisplayFormats.datePattern))
-fun String.toCentavosOrNull(): Long? = replace(",", "").toBigDecimalOrNull()?.movePointRight(2)?.toLong()
+fun String.toCentavosOrNull(): Long? {
+    val normalized = trim().replace(",", "")
+    val decimal = normalized.toBigDecimalOrNull() ?: return null
+    if (decimal.scale().coerceAtLeast(0) > 2 || decimal.signum() < 0) return null
+    return runCatching { decimal.movePointRight(2).longValueExact() }.getOrNull()
+}
+
+fun String.isBlankOrValidMoney(): Boolean = isBlank() || toCentavosOrNull() != null

@@ -12,5 +12,5 @@ internal fun OdometerCalculator.statsFor(
 ): OdometerStats = stats(
     entries = entries,
     initialReadingKm = motorcycle?.initialOdometerKm,
-    initialDate = motorcycle?.purchaseDateEpochDay?.let(LocalDate::ofEpochDay),
+    initialDate = (motorcycle?.initialOdometerEpochDay ?: motorcycle?.purchaseDateEpochDay)?.let(LocalDate::ofEpochDay),
 )

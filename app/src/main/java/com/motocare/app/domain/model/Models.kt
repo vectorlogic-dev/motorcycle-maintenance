@@ -21,7 +21,7 @@ data class OdometerStats(
 
 sealed interface OdometerValidation {
     data object Valid : OdometerValidation
-    data class CorrectionRequired(val previousKm: Long) : OdometerValidation
+    data class CorrectionRequired(val previousKm: Long?, val nextKm: Long? = null) : OdometerValidation
     data object NegativeReading : OdometerValidation
 }
 
@@ -70,4 +70,9 @@ data class CostSummary(
     val costPerKmCentavos: Double?,
     val fuelCostPerKmCentavos: Double?,
     val maintenanceCostPerKmCentavos: Double?,
+)
+
+data class DatedCost(
+    val epochDay: Long,
+    val amountCentavos: Long,
 )

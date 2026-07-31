@@ -26,12 +26,29 @@ class LoanRepository @Inject constructor(private val database: MotoCareDatabase)
         id
     }
 
+    suspend fun replace(existing: LoanEntity, replacement: LoanEntity): Long = database.withTransaction {
+        database.loanDao().delete(existing)
+        val normalized = replacement.copy(id = 0)
+        val id = database.loanDao().insert(normalized)
+        createPaymentsIfMissing(id, normalized)
+        id
+    }
+
+    suspend fun delete(loan: LoanEntity) = database.withTransaction {
+        database.loanDao().delete(loan)
+    }
+
     suspend fun ensurePayments(motorcycleId: Long) = database.withTransaction {
         val loan = database.loanDao().getForMotorcycle(motorcycleId) ?: return@withTransaction
         createPaymentsIfMissing(loan.id, loan)
     }
 
-    suspend fun markPayment(payment: LoanPaymentEntity, status: String, loan: LoanEntity) {
+    suspend fun markPayment(
+        payment: LoanPaymentEntity,
+        status: String,
+        loan: LoanEntity,
+        paidDate: LocalDate = LocalDate.now(),
+    ) {
         val amount = when (status) {
             "PAID_ON_TIME" -> (loan.monthlyPaymentCentavos - loan.rebateCentavos).coerceAtLeast(0)
             "PAID_LATE" -> loan.monthlyPaymentCentavos
@@ -41,7 +58,7 @@ class LoanRepository @Inject constructor(private val database: MotoCareDatabase)
             payment.copy(
                 status = status,
                 amountCentavos = amount,
-                paidEpochDay = if (status.startsWith("PAID")) LocalDate.now().toEpochDay() else null,
+                paidEpochDay = if (status.startsWith("PAID")) paidDate.toEpochDay() else null,
             ),
         )
     }

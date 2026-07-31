@@ -6,6 +6,7 @@ import com.motocare.app.data.local.entity.AttachmentReferenceEntity
 import com.motocare.app.data.local.entity.OdometerEntryEntity
 import com.motocare.app.data.local.entity.ServiceRecordEntity
 import com.motocare.app.data.local.entity.ServiceRecordItemEntity
+import com.motocare.app.util.asStoredDateMillis
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -15,14 +16,17 @@ class ServiceRepository @Inject constructor(private val database: MotoCareDataba
     fun observe(motorcycleId: Long): Flow<List<ServiceRecordEntity>> = database.serviceDao().observeRecords(motorcycleId)
 
     suspend fun itemIds(serviceRecordId: Long): List<Long> = database.serviceDao().itemIds(serviceRecordId)
+    suspend fun attachments(serviceRecordId: Long): List<AttachmentReferenceEntity> =
+        database.attachmentDao().getForOwner("SERVICE_RECORD", serviceRecordId)
 
     suspend fun add(record: ServiceRecordEntity, scheduleIds: Set<Long>, receiptUris: List<String>): Long =
         database.withTransaction {
+            val validScheduleIds = requireSchedulesForMotorcycle(scheduleIds, record.motorcycleId)
             val recordId = database.serviceDao().insert(record)
-            if (scheduleIds.isNotEmpty()) {
-                database.serviceDao().insertItems(scheduleIds.map { ServiceRecordItemEntity(recordId, it) })
+            if (validScheduleIds.isNotEmpty()) {
+                database.serviceDao().insertItems(validScheduleIds.map { ServiceRecordItemEntity(recordId, it) })
             }
-            scheduleIds.forEach { scheduleId ->
+            validScheduleIds.forEach { scheduleId ->
                 val schedule = database.maintenanceDao().getById(scheduleId)
                 if (schedule != null && schedule.motorcycleId == record.motorcycleId) {
                     database.maintenanceDao().update(
@@ -35,52 +39,44 @@ class ServiceRepository @Inject constructor(private val database: MotoCareDataba
                     )
                 }
             }
-            receiptUris.forEach { uri ->
-                database.serviceDao().insertAttachment(
+            receiptUris.distinct().forEach { uri ->
+                database.attachmentDao().insert(
                     AttachmentReferenceEntity(ownerType = "SERVICE_RECORD", ownerId = recordId, uri = uri, mediaType = "image/*"),
                 )
             }
-            val motorcycle = database.motorcycleDao().getById(record.motorcycleId)
-            if (motorcycle != null && record.odometerKm > motorcycle.currentOdometerKm) {
-                database.motorcycleDao().update(motorcycle.copy(currentOdometerKm = record.odometerKm))
-                database.odometerDao().insert(
-                    OdometerEntryEntity(
-                        motorcycleId = record.motorcycleId,
-                        readingKm = record.odometerKm,
-                        recordedAtEpochMillis = java.time.LocalDate.ofEpochDay(record.serviceEpochDay)
-                            .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
-                        note = "Service record",
-                    ),
-                )
-            }
+            addGeneratedReading(record)
+            syncCurrentOdometer(record.motorcycleId)
             recordId
         }
 
     suspend fun update(record: ServiceRecordEntity, scheduleIds: Set<Long>, receiptUris: List<String>) =
         database.withTransaction {
             val old = database.serviceDao().getById(record.id) ?: return@withTransaction
-            val affectedSchedules = database.serviceDao().itemIds(record.id).toSet() + scheduleIds
+            require(old.motorcycleId == record.motorcycleId) { "A service record cannot be moved to another motorcycle." }
+            val validScheduleIds = requireSchedulesForMotorcycle(scheduleIds, record.motorcycleId)
+            val affectedSchedules = database.serviceDao().itemIds(record.id).toSet() + validScheduleIds
             removeGeneratedReading(old)
             database.serviceDao().update(record)
             database.serviceDao().deleteItems(record.id)
-            if (scheduleIds.isNotEmpty()) {
-                database.serviceDao().insertItems(scheduleIds.map { ServiceRecordItemEntity(record.id, it) })
+            if (validScheduleIds.isNotEmpty()) {
+                database.serviceDao().insertItems(validScheduleIds.map { ServiceRecordItemEntity(record.id, it) })
             }
-            receiptUris.forEach { uri ->
-                database.serviceDao().insertAttachment(
+            database.attachmentDao().deleteForOwner("SERVICE_RECORD", record.id)
+            receiptUris.distinct().forEach { uri ->
+                database.attachmentDao().insert(
                     AttachmentReferenceEntity(ownerType = "SERVICE_RECORD", ownerId = record.id, uri = uri, mediaType = "image/*"),
                 )
             }
             affectedSchedules.forEach { syncSchedule(it) }
             syncCurrentOdometer(record.motorcycleId)
-            addGeneratedReadingIfCurrent(record)
+            addGeneratedReading(record)
             syncCurrentOdometer(record.motorcycleId)
         }
 
     suspend fun delete(record: ServiceRecordEntity) = database.withTransaction {
         val scheduleIds = database.serviceDao().itemIds(record.id)
         removeGeneratedReading(record)
-        database.phaseThreeDao().deleteAttachments("SERVICE_RECORD", record.id)
+        database.attachmentDao().deleteForOwner("SERVICE_RECORD", record.id)
         database.serviceDao().delete(record)
         scheduleIds.forEach { syncSchedule(it) }
         syncCurrentOdometer(record.motorcycleId)
@@ -99,27 +95,33 @@ class ServiceRepository @Inject constructor(private val database: MotoCareDataba
         )
     }
 
+    private suspend fun requireSchedulesForMotorcycle(scheduleIds: Set<Long>, motorcycleId: Long): Set<Long> {
+        val valid = scheduleIds.filterTo(mutableSetOf()) { id ->
+            database.maintenanceDao().getById(id)?.motorcycleId == motorcycleId
+        }
+        require(valid.size == scheduleIds.size) { "A selected maintenance item belongs to another motorcycle." }
+        return valid
+    }
+
     private suspend fun removeGeneratedReading(record: ServiceRecordEntity) {
         database.odometerDao().deleteGenerated(
             motorcycleId = record.motorcycleId,
             readingKm = record.odometerKm,
-            recordedAtEpochMillis = record.timestamp(),
+            recordedEpochDay = record.serviceEpochDay,
             note = "Service record",
         )
     }
 
-    private suspend fun addGeneratedReadingIfCurrent(record: ServiceRecordEntity) {
-        val motorcycle = database.motorcycleDao().getById(record.motorcycleId) ?: return
-        if (record.odometerKm > motorcycle.currentOdometerKm) {
-            database.odometerDao().insert(
-                OdometerEntryEntity(
-                    motorcycleId = record.motorcycleId,
-                    readingKm = record.odometerKm,
-                    recordedAtEpochMillis = record.timestamp(),
-                    note = "Service record",
-                ),
-            )
-        }
+    private suspend fun addGeneratedReading(record: ServiceRecordEntity) {
+        database.odometerDao().insert(
+            OdometerEntryEntity(
+                motorcycleId = record.motorcycleId,
+                readingKm = record.odometerKm,
+                recordedAtEpochMillis = java.time.LocalDate.ofEpochDay(record.serviceEpochDay).asStoredDateMillis(),
+                recordedEpochDay = record.serviceEpochDay,
+                note = "Service record",
+            ),
+        )
     }
 
     private suspend fun syncCurrentOdometer(motorcycleId: Long) {
@@ -127,7 +129,4 @@ class ServiceRepository @Inject constructor(private val database: MotoCareDataba
         val latest = database.odometerDao().latest(motorcycleId)?.readingKm ?: motorcycle.initialOdometerKm
         if (latest != motorcycle.currentOdometerKm) database.motorcycleDao().update(motorcycle.copy(currentOdometerKm = latest))
     }
-
-    private fun ServiceRecordEntity.timestamp(): Long = java.time.LocalDate.ofEpochDay(serviceEpochDay)
-        .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
 }

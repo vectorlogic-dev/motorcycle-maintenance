@@ -21,14 +21,13 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.ZoneId
 import javax.inject.Inject
 
 data class OdometerUiState(
     val motorcycle: MotorcycleEntity? = null,
     val entries: List<OdometerEntryEntity> = emptyList(),
     val stats: OdometerStats = OdometerStats(),
-    val correctionPreviousKm: Long? = null,
+    val correctionRequired: OdometerValidation.CorrectionRequired? = null,
     val error: String? = null,
     val isLoading: Boolean = true,
 )
@@ -47,7 +46,7 @@ class OdometerViewModel @Inject constructor(
         bikes.firstOrNull { it.id == id } ?: bikes.firstOrNull()
     }
     private val entries = selected.flatMapLatest { it?.let { bike -> repository.observe(bike.id) } ?: flowOf(emptyList()) }
-    private val correction = MutableStateFlow<Long?>(null)
+    private val correction = MutableStateFlow<OdometerValidation.CorrectionRequired?>(null)
     private val error = MutableStateFlow<String?>(null)
     private var pending: PendingReading? = null
 
@@ -56,7 +55,7 @@ class OdometerViewModel @Inject constructor(
             motorcycle = bike,
             entries = readings,
             stats = calculator.statsFor(bike, readings),
-            correctionPreviousKm = correctionKm,
+            correctionRequired = correctionKm,
             error = message,
             isLoading = false,
         )
@@ -71,8 +70,7 @@ class OdometerViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            val timestamp = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            when (val result = repository.addReading(bike.id, km, timestamp, note, correctionConfirmed)) {
+            when (val result = repository.addReading(bike.id, km, date.toEpochDay(), note, correctionConfirmed)) {
                 OdometerValidation.Valid -> {
                     correction.value = null
                     pending = null
@@ -81,7 +79,7 @@ class OdometerViewModel @Inject constructor(
                 }
                 is OdometerValidation.CorrectionRequired -> {
                     pending = PendingReading(km, date, note)
-                    correction.value = result.previousKm
+                    correction.value = result
                 }
                 OdometerValidation.NegativeReading -> error.value = "Odometer cannot be negative."
             }

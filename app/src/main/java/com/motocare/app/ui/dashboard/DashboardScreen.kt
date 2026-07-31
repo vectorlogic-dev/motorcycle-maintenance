@@ -196,7 +196,7 @@ fun DashboardScreen(
         }
         MotoCareSectionHeader("Maintenance")
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            MetricCard("Due soon", state.dueSoonCount.toString(), Modifier.weight(1f))
+            MetricCard("Needs attention", state.needsAttentionCount.toString(), Modifier.weight(1f))
             MetricCard("Overdue", state.overdueCount.toString(), Modifier.weight(1f), state.overdueCount > 0)
         }
         state.nextSchedule?.let { row ->

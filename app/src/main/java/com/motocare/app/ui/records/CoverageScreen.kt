@@ -98,6 +98,11 @@ private fun CoverageDialog(existing: com.motocare.app.data.local.entity.Coverage
     var parts by remember(existing) { mutableStateOf(existing?.coveredParts ?: false) }
     var dealer by remember(existing) { mutableStateOf(existing?.dealerName.orEmpty()) }
     var notes by remember(existing) { mutableStateOf(existing?.notes.orEmpty()) }
+    val startKmValue = startKm.toLongOrNull()
+    val limitValue = limit.toLongOrNull()
+    val valid = end >= start &&
+        startKmValue?.let { it >= 0 } == true &&
+        limitValue?.let { value -> value >= (startKmValue ?: Long.MAX_VALUE) } == true
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Coverage details") },
@@ -105,8 +110,13 @@ private fun CoverageDialog(existing: com.motocare.app.data.local.entity.Coverage
             Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 MotoCareDateField(start, { start = it }, label = "Coverage start")
                 MotoCareDateField(end, { end = it }, label = "Coverage end")
-                NumberField(startKm, { startKm = it }, "Starting odometer")
-                NumberField(limit, { limit = it }, "Coverage kilometre limit")
+                NumberField(startKm, { startKm = it }, "Starting odometer (km)")
+                NumberField(limit, { limit = it }, "Coverage expires at odometer (km)")
+                Text(
+                    "Enter the odometer reading where coverage ends, not the number of kilometres included.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Field(services, { services = it }, "Covered services", false)
                 Row { Checkbox(labour, { labour = it }); Text("Labour covered", Modifier.padding(top = 12.dp)) }
                 Row { Checkbox(parts, { parts = it }); Text("Parts covered", Modifier.padding(top = 12.dp)) }
@@ -114,7 +124,7 @@ private fun CoverageDialog(existing: com.motocare.app.data.local.entity.Coverage
                 Field(notes, { notes = it }, "Notes", false)
             }
         },
-        confirmButton = { TextButton(enabled = end >= start, onClick = { onSave(CoverageInput(start.toString(), end.toString(), startKm, limit, services, labour, parts, dealer, notes)) }) { Text("Save") } },
+        confirmButton = { TextButton(enabled = valid, onClick = { onSave(CoverageInput(start.toString(), end.toString(), startKm, limit, services, labour, parts, dealer, notes)) }) { Text("Save") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

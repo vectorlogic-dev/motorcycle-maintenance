@@ -3,7 +3,7 @@ package com.motocare.app.domain.usecase
 import com.motocare.app.data.local.entity.OdometerEntryEntity
 import com.motocare.app.domain.model.OdometerStats
 import com.motocare.app.domain.model.OdometerValidation
-import java.time.Instant
+import com.motocare.app.util.recordedDate
 import java.time.ZoneId
 import java.time.YearMonth
 import java.time.temporal.ChronoUnit
@@ -18,6 +18,27 @@ class OdometerCalculator @Inject constructor() {
         else -> OdometerValidation.Valid
     }
 
+    fun validateTimeline(
+        newReadingKm: Long,
+        newEpochDay: Long,
+        entries: List<OdometerEntryEntity>,
+        correctionConfirmed: Boolean,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): OdometerValidation {
+        if (newReadingKm < 0) return OdometerValidation.NegativeReading
+        val newDate = java.time.LocalDate.ofEpochDay(newEpochDay)
+        val dated = entries.sortedWith(compareBy<OdometerEntryEntity> { it.recordedDate(zoneId) }.thenBy { it.id })
+        val previous = dated.lastOrNull { it.recordedDate(zoneId) <= newDate }
+        val next = dated.firstOrNull { it.recordedDate(zoneId) > newDate }
+        val conflictsWithPrevious = previous?.readingKm?.let { newReadingKm < it } == true
+        val conflictsWithNext = next?.readingKm?.let { newReadingKm > it } == true
+        return if ((conflictsWithPrevious || conflictsWithNext) && !correctionConfirmed) {
+            OdometerValidation.CorrectionRequired(previous?.readingKm, next?.readingKm)
+        } else {
+            OdometerValidation.Valid
+        }
+    }
+
     fun stats(
         entries: List<OdometerEntryEntity>,
         zoneId: ZoneId = ZoneId.systemDefault(),
@@ -27,8 +48,8 @@ class OdometerCalculator @Inject constructor() {
         val points = entries.map {
             ReadingPoint(
                 readingKm = it.readingKm,
-                date = Instant.ofEpochMilli(it.recordedAtEpochMillis).atZone(zoneId).toLocalDate(),
-                order = it.recordedAtEpochMillis,
+                date = it.recordedDate(zoneId),
+                order = it.id,
             )
         }.toMutableList()
         if (initialReadingKm != null && initialDate != null &&

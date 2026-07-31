@@ -27,6 +27,9 @@ interface MotorcycleDao {
     @Query("SELECT * FROM motorcycles WHERE archived = 0 ORDER BY createdAtEpochMillis, id")
     fun observeActive(): Flow<List<MotorcycleEntity>>
 
+    @Query("SELECT * FROM motorcycles WHERE archived = 1 ORDER BY createdAtEpochMillis, id")
+    fun observeArchived(): Flow<List<MotorcycleEntity>>
+
     @Query("SELECT * FROM motorcycles WHERE id = :id")
     fun observeById(id: Long): Flow<MotorcycleEntity?>
 
@@ -41,24 +44,39 @@ interface MotorcycleDao {
 
     @Query("UPDATE motorcycles SET archived = 1 WHERE id = :id")
     suspend fun archive(id: Long)
+
+    @Query("UPDATE motorcycles SET archived = 0 WHERE id = :id")
+    suspend fun restore(id: Long)
+
+    @Query("DELETE FROM motorcycles WHERE id = :id")
+    suspend fun deleteById(id: Long)
 }
 
 @Dao
 interface OdometerDao {
-    @Query("SELECT * FROM odometer_entries WHERE motorcycleId = :motorcycleId ORDER BY recordedAtEpochMillis DESC, id DESC")
+    @Query("SELECT * FROM odometer_entries WHERE motorcycleId = :motorcycleId ORDER BY recordedEpochDay DESC, recordedAtEpochMillis DESC, id DESC")
     fun observeForMotorcycle(motorcycleId: Long): Flow<List<OdometerEntryEntity>>
 
-    @Query("SELECT * FROM odometer_entries WHERE motorcycleId = :motorcycleId ORDER BY recordedAtEpochMillis DESC, id DESC LIMIT 1")
+    @Query("SELECT * FROM odometer_entries WHERE motorcycleId = :motorcycleId ORDER BY recordedEpochDay DESC, recordedAtEpochMillis DESC, id DESC LIMIT 1")
     suspend fun latest(motorcycleId: Long): OdometerEntryEntity?
+
+    @Query("SELECT * FROM odometer_entries WHERE motorcycleId = :motorcycleId ORDER BY recordedEpochDay, recordedAtEpochMillis, id")
+    suspend fun getForMotorcycle(motorcycleId: Long): List<OdometerEntryEntity>
+
+    @Query("SELECT * FROM odometer_entries WHERE motorcycleId = :motorcycleId AND note = 'Starting odometer' ORDER BY id LIMIT 1")
+    suspend fun startingEntry(motorcycleId: Long): OdometerEntryEntity?
 
     @Insert
     suspend fun insert(entry: OdometerEntryEntity): Long
 
+    @Update
+    suspend fun update(entry: OdometerEntryEntity)
+
     @Delete
     suspend fun delete(entry: OdometerEntryEntity)
 
-    @Query("DELETE FROM odometer_entries WHERE motorcycleId = :motorcycleId AND readingKm = :readingKm AND recordedAtEpochMillis = :recordedAtEpochMillis AND note = :note")
-    suspend fun deleteGenerated(motorcycleId: Long, readingKm: Long, recordedAtEpochMillis: Long, note: String)
+    @Query("DELETE FROM odometer_entries WHERE motorcycleId = :motorcycleId AND readingKm = :readingKm AND recordedEpochDay = :recordedEpochDay AND note = :note")
+    suspend fun deleteGenerated(motorcycleId: Long, readingKm: Long, recordedEpochDay: Long, note: String)
 }
 
 @Dao
@@ -68,6 +86,9 @@ interface MaintenanceDao {
 
     @Query("SELECT * FROM maintenance_schedules WHERE active = 1")
     suspend fun getAllActive(): List<MaintenanceScheduleEntity>
+
+    @Query("SELECT * FROM maintenance_schedules WHERE motorcycleId = :motorcycleId ORDER BY name")
+    suspend fun getAllForMotorcycle(motorcycleId: Long): List<MaintenanceScheduleEntity>
 
     @Insert
     suspend fun insert(schedule: MaintenanceScheduleEntity): Long
@@ -183,6 +204,9 @@ interface LoanDao {
     @Update
     suspend fun update(loan: LoanEntity)
 
+    @Delete
+    suspend fun delete(loan: LoanEntity)
+
     @Query("SELECT * FROM loan_payments WHERE loanId = :loanId ORDER BY installmentNumber")
     fun observePayments(loanId: Long): Flow<List<LoanPaymentEntity>>
 
@@ -254,4 +278,19 @@ interface PhaseThreeDao {
 
     @Insert
     suspend fun insertAttachment(attachment: AttachmentReferenceEntity): Long
+}
+
+@Dao
+interface AttachmentDao {
+    @Query("SELECT * FROM attachment_references WHERE ownerType = :ownerType AND ownerId = :ownerId ORDER BY id")
+    suspend fun getForOwner(ownerType: String, ownerId: Long): List<AttachmentReferenceEntity>
+
+    @Query("DELETE FROM attachment_references WHERE ownerType = :ownerType AND ownerId = :ownerId")
+    suspend fun deleteForOwner(ownerType: String, ownerId: Long)
+
+    @Query("SELECT COUNT(*) FROM attachment_references WHERE uri = :uri")
+    suspend fun countUriReferences(uri: String): Int
+
+    @Insert
+    suspend fun insert(attachment: AttachmentReferenceEntity): Long
 }

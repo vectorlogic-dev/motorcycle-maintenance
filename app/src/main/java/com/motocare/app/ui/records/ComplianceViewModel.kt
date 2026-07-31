@@ -74,13 +74,15 @@ class ComplianceViewModel @Inject constructor(
         val bike = uiState.value.motorcycle ?: return
         val start = runCatching { LocalDate.parse(input.startDate) }.getOrNull() ?: return
         val end = runCatching { LocalDate.parse(input.endDate) }.getOrNull() ?: return
+        val startKm = input.startKm.toLongOrNull()?.takeIf { it >= 0 } ?: return
+        val limitKm = input.limitKm.toLongOrNull()?.takeIf { it >= startKm } ?: return
         val plan = (uiState.value.coverage ?: CoveragePlanEntity(
             motorcycleId = bike.id, startEpochDay = start.toEpochDay(), endEpochDay = end.toEpochDay(),
             startOdometerKm = bike.initialOdometerKm, limitOdometerKm = 12_000,
         )).copy(
             startEpochDay = start.toEpochDay(), endEpochDay = end.toEpochDay(),
-            startOdometerKm = input.startKm.toLongOrNull() ?: bike.initialOdometerKm,
-            limitOdometerKm = input.limitKm.toLongOrNull() ?: 12_000,
+            startOdometerKm = startKm,
+            limitOdometerKm = limitKm,
             coveredServices = input.services.trim(), coveredLabour = input.labour, coveredParts = input.parts,
             notes = input.notes.trim(), dealerName = input.dealer.trim(),
         )

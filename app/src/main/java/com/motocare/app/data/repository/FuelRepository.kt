@@ -4,9 +4,9 @@ import androidx.room.withTransaction
 import com.motocare.app.data.local.MotoCareDatabase
 import com.motocare.app.data.local.entity.FuelEntryEntity
 import com.motocare.app.data.local.entity.OdometerEntryEntity
+import com.motocare.app.util.asStoredDateMillis
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
-import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,18 +22,15 @@ class FuelRepository @Inject constructor(private val database: MotoCareDatabase)
             database.fuelDao().update(entry)
             entry.id
         }
-        syncCurrentOdometer(entry.motorcycleId)
-        val motorcycle = database.motorcycleDao().getById(entry.motorcycleId)
-        if (motorcycle != null && entry.odometerKm > motorcycle.currentOdometerKm) {
-            database.odometerDao().insert(
-                OdometerEntryEntity(
-                    motorcycleId = entry.motorcycleId,
-                    readingKm = entry.odometerKm,
-                    recordedAtEpochMillis = LocalDate.ofEpochDay(entry.dateEpochDay).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
-                    note = "Fuel entry",
-                ),
-            )
-        }
+        database.odometerDao().insert(
+            OdometerEntryEntity(
+                motorcycleId = entry.motorcycleId,
+                readingKm = entry.odometerKm,
+                recordedAtEpochMillis = LocalDate.ofEpochDay(entry.dateEpochDay).asStoredDateMillis(),
+                recordedEpochDay = entry.dateEpochDay,
+                note = "Fuel entry",
+            ),
+        )
         syncCurrentOdometer(entry.motorcycleId)
         id
     }
@@ -50,7 +47,7 @@ class FuelRepository @Inject constructor(private val database: MotoCareDatabase)
         database.odometerDao().deleteGenerated(
             motorcycleId = entry.motorcycleId,
             readingKm = entry.odometerKm,
-            recordedAtEpochMillis = entry.timestamp(),
+            recordedEpochDay = entry.dateEpochDay,
             note = "Fuel entry",
         )
     }
@@ -60,7 +57,4 @@ class FuelRepository @Inject constructor(private val database: MotoCareDatabase)
         val latest = database.odometerDao().latest(motorcycleId)?.readingKm ?: motorcycle.initialOdometerKm
         if (latest != motorcycle.currentOdometerKm) database.motorcycleDao().update(motorcycle.copy(currentOdometerKm = latest))
     }
-
-    private fun FuelEntryEntity.timestamp(): Long =
-        LocalDate.ofEpochDay(dateEpochDay).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 }

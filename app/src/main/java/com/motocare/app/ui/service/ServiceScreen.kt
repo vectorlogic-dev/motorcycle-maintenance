@@ -1,6 +1,7 @@
 package com.motocare.app.ui.service
 
 import android.content.Intent
+import androidx.core.net.toUri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +49,7 @@ import com.motocare.app.data.local.entity.MaintenanceScheduleEntity
 import com.motocare.app.data.local.entity.ServiceRecordEntity
 import com.motocare.app.util.asDisplayDate
 import com.motocare.app.util.asPeso
+import com.motocare.app.util.isBlankOrValidMoney
 import com.motocare.app.ui.components.MotoCareEmptyState
 import com.motocare.app.ui.components.MotoCareLoadingState
 import com.motocare.app.ui.components.MotoCareNoMotorcycleState
@@ -72,6 +74,7 @@ fun ServiceScreen(
     var startAddHandled by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<ServiceRecordEntity?>(null) }
     var editingItemIds by remember { mutableStateOf(emptySet<Long>()) }
+    var editingReceiptUris by remember { mutableStateOf(emptyList<String>()) }
     var deleteTarget by remember { mutableStateOf<ServiceRecordEntity?>(null) }
     LaunchedEffect(startWithAdd, state.motorcycle?.id) {
         if (startWithAdd && !startAddHandled && state.motorcycle != null) {
@@ -110,7 +113,13 @@ fun ServiceScreen(
                         if (record.notes.isNotBlank()) Text(record.notes, style = MaterialTheme.typography.bodySmall)
                         MotoCareRecordActions(
                             "service record",
-                            onEdit = { viewModel.loadItemIds(record.id) { ids -> editingItemIds = ids; editing = record } },
+                            onEdit = {
+                                viewModel.loadEditData(record.id) { ids, receipts ->
+                                    editingItemIds = ids
+                                    editingReceiptUris = receipts
+                                    editing = record
+                                }
+                            },
                             onDelete = { deleteTarget = record },
                         )
                     }
@@ -127,9 +136,15 @@ fun ServiceScreen(
     if (showAdd || editing != null) AddServiceDialog(
         existing = editing,
         initialScheduleIds = initialScheduleIds,
+        initialReceiptUris = if (editing == null) emptyList() else editingReceiptUris,
         currentKm = state.motorcycle?.currentOdometerKm ?: 0,
         schedules = state.schedules,
-        onDismiss = { showAdd = false; editing = null; editingItemIds = emptySet() },
+        onDismiss = {
+            showAdd = false
+            editing = null
+            editingItemIds = emptySet()
+            editingReceiptUris = emptyList()
+        },
         onSave = { input ->
             val existing = editing
             if (existing == null) {
@@ -138,7 +153,11 @@ fun ServiceScreen(
                     onServiceSaved()
                 }
             } else {
-                viewModel.update(existing, input) { editing = null; editingItemIds = emptySet() }
+                viewModel.update(existing, input) {
+                    editing = null
+                    editingItemIds = emptySet()
+                    editingReceiptUris = emptyList()
+                }
             }
         },
     )
@@ -156,6 +175,7 @@ fun ServiceScreen(
 private fun AddServiceDialog(
     existing: ServiceRecordEntity?,
     initialScheduleIds: Set<Long>,
+    initialReceiptUris: List<String>,
     currentKm: Long,
     schedules: List<MaintenanceScheduleEntity>,
     onDismiss: () -> Unit,
@@ -169,13 +189,13 @@ private fun AddServiceDialog(
     var parts by remember(existing) { mutableStateOf(existing?.partsCostCentavos?.let { "%.2f".format(it / 100.0) }.orEmpty()) }
     var replaced by remember(existing) { mutableStateOf(existing?.partsReplaced.orEmpty()) }
     var notes by remember(existing) { mutableStateOf(existing?.notes.orEmpty()) }
-    var receipts by remember(existing) { mutableStateOf(emptyList<String>()) }
+    var receipts by remember(existing, initialReceiptUris) { mutableStateOf(initialReceiptUris) }
     var nextDate by remember(existing) { mutableStateOf(existing?.nextRecommendedEpochDay?.let(LocalDate::ofEpochDay)) }
     var nextKm by remember(existing) { mutableStateOf(existing?.nextRecommendedOdometerKm?.toString().orEmpty()) }
     val context = LocalContext.current
     val receiptPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         uris.forEach { uri -> runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } }
-        receipts = uris.map { it.toString() }
+        receipts = (receipts + uris.map { it.toString() }).distinct()
     }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -208,7 +228,23 @@ private fun AddServiceDialog(
                 Field(replaced, { replaced = it }, "Parts replaced")
                 Field(notes, { notes = it }, "Notes", false)
                 TextButton(onClick = { receiptPicker.launch(arrayOf("image/*")) }) {
-                    Text(if (receipts.isEmpty()) "Attach receipt photos" else "${receipts.size} receipt photo(s) selected")
+                    Text(if (receipts.isEmpty()) "Attach receipt photos" else "${receipts.size} receipt photo(s) attached")
+                }
+                receipts.forEachIndexed { index, uri ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        TextButton(
+                            onClick = {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Intent.ACTION_VIEW, uri.toUri()).apply {
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        },
+                                    )
+                                }
+                            },
+                        ) { Text("Open receipt ${index + 1}") }
+                        TextButton(onClick = { receipts = receipts - uri }) { Text("Remove") }
+                    }
                 }
                 MotoCareOptionalDateField(nextDate, { nextDate = it }, "Next recommended date")
                 NumberField(nextKm, { nextKm = it }, "Next recommended odometer")
@@ -216,7 +252,10 @@ private fun AddServiceDialog(
         },
         confirmButton = {
             TextButton(
-                enabled = km.toLongOrNull() != null,
+                enabled = km.toLongOrNull()?.let { it >= 0 } == true &&
+                    labour.isBlankOrValidMoney() &&
+                    parts.isBlankOrValidMoney() &&
+                    (nextKm.isBlank() || nextKm.toLongOrNull() != null),
                 onClick = { onSave(ServiceInput(date.toString(), km, selected, mechanic, labour, parts, replaced, notes, receipts, nextDate?.toString().orEmpty(), nextKm)) },
             ) { Text("Save") }
         },
