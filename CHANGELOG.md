@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.3 - 2026-07-31
+
 - Added research-backed, editable starter maintenance intervals for new and existing motorcycles
 - Added a Record service action that opens the service form with the maintenance item preselected
 - Added drive and cooling profiles so starter schedules include only relevant chain, belt, and coolant items

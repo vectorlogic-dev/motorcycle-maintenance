@@ -1,20 +1,22 @@
 # MotoCare production audit
 
-Audit date: 2026-07-19
+Audit date: 2026-07-31
 
 ## Result
 
-MotoCare 1.0.2 is a production release candidate. The codebase, local-data flows, offline privacy contract, optimized release build, and automated tests pass. Publishing still requires representative physical-device checks and, for Google Play, listing configuration.
+MotoCare 1.0.3 is ready for its GitHub APK release. The codebase, local-data flows, offline privacy contract, optimized release build, and automated tests pass. Google Play publishing still requires representative physical-device checks and listing configuration.
 
 ## Verified
 
 - `testDebugUnitTest`, `lintDebug`, `assembleDebug`, `assembleDebugAndroidTest`, `connectedDebugAndroidTest`, and `bundleRelease` pass.
-- 12 JVM tests and 11 API 37 emulator tests pass.
-- The signed 1.0.2 APK and AAB use the same release certificate as the previous releases; APK signature verification and AAB JAR verification pass.
-- Emulator upgrades through signed 1.0.2 succeeded without clearing app data; a clean install showed the empty-start onboarding with no sample action.
-- Room schema versions 1 and 2 are committed, with a tested non-destructive `1 → 2` migration.
-- JSON restore accepts versions 1 and 2, upgrades legacy motorcycle rows, validates foreign keys, and rolls back the entire restore on failure.
+- 14 JVM tests and 14 API 37 emulator tests pass.
+- The signed 1.0.3 APK and AAB use the same release certificate as the previous releases; APK signature verification and AAB JAR verification pass.
+- Emulator upgrades through signed 1.0.3 succeeded without clearing app data; a clean install showed the empty-start onboarding with no sample action.
+- Room schema versions 1, 2, and 3 are committed, with tested non-destructive `1 → 2` and `2 → 3` migrations.
+- JSON restore accepts versions 1 through 3, upgrades legacy motorcycle rows, validates foreign keys, and rolls back the entire restore on failure.
 - Odometer purchase baselines feed dashboard, reports, cost-per-kilometre, and coverage forecasting through one shared calculation path.
+- New motorcycles receive editable starter maintenance schedules tailored to their selected final-drive and cooling equipment.
+- Maintenance items can open a service record with the completed work already selected.
 - Release code and resources are optimized with R8; the mapping file is generated for crash retracing.
 - The merged manifest contains no network, broad storage, location, camera, microphone, or contacts permissions. An instrumentation test enforces this contract.
 - Android cloud backup and device-to-device transfer are excluded; user-controlled JSON/CSV export remains available through the document picker.
@@ -28,7 +30,7 @@ MotoCare 1.0.2 is a production release candidate. The codebase, local-data flows
 ## Non-blocking maintenance findings
 
 - Lint reports dependency-update availability and a KSP migration suggestion. These are maintenance opportunities, not correctness or release errors; dependency upgrades should be handled as a separately tested change.
-- The optimized signed APK is roughly 1.8 MB, the signed AAB is roughly 4.3 MB, and the matching R8 mapping file is generated for archival with the release.
+- The optimized signed APK, signed AAB, and matching R8 mapping file are generated for archival with the release.
 
 ## Release-owner gate
 
