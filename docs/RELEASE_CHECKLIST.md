@@ -5,10 +5,12 @@
 - Run `./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest bundleRelease`.
 - Run `./gradlew connectedDebugAndroidTest` on an API 26+ emulator or device.
 - Smoke-test onboarding and confirm a fresh installation starts with an empty garage.
+- Confirm the initial odometer date opens a calendar and cannot be placed after later odometer history.
 - Install the signed APK over the previous signed release and confirm existing local records remain available.
 - Check light, dark, large-font, and TalkBack navigation on a physical device.
 - Verify notification permission, channel settings, and reminder opt-outs.
 - Create a backup, restore it, and compare motorcycle and record counts.
+- Open, replace, and remove a service receipt and problem attachment after restoring a backup.
 - Open every CSV export in a spreadsheet application.
 
 ## Store preparation

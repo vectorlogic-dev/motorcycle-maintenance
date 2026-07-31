@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 1.0.4 - 2026-07-31
+
+- Added an editable calendar date for each motorcycle's initial odometer reading
+- Made current mileage and riding averages follow chronological history, including safe backdated readings
+- Made motorcycle creation atomic and added a tested non-destructive Room 3 → 4 migration
+- Added equipment-change suggestions for missing maintenance templates without overwriting owner edits
+- Strengthened service-to-maintenance ownership validation and attachment replacement
+- Added open and remove actions for saved motorcycle photos, receipts, and problem media
+- Added archived motorcycle restore and confirmed permanent deletion
+- Added financing edit, removal, payment-date entry, and protected installment-schedule rebuilding
+- Unified cash purchase and financing costs across Dashboard and Reports
+- Added notification deep links, clearer overdue wording, and reminder scheduling that follows the opt-in setting
+- Hardened form validation and version-4 JSON backup snapshots and compatibility tests
+
 ## 1.0.3 - 2026-07-31
 
 - Added research-backed, editable starter maintenance intervals for new and existing motorcycles
