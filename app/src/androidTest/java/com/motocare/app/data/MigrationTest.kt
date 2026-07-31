@@ -13,8 +13,6 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class MigrationTest {
-    private val databaseName = "migration-test"
-
     @get:Rule
     val helper = MigrationTestHelper(
         InstrumentationRegistry.getInstrumentation(),
@@ -24,6 +22,7 @@ class MigrationTest {
 
     @Test
     fun migrate1To2_preservesMotorcycleAndAddsOwnershipFields() {
+        val databaseName = "migration-test-1-2"
         helper.createDatabase(databaseName, 1).apply {
             execSQL(
                 """INSERT INTO motorcycles
@@ -43,6 +42,31 @@ class MigrationTest {
                 assertEquals(true, cursor.isNull(1))
                 assertEquals("", cursor.getString(2))
                 assertEquals(0, cursor.getInt(3))
+            }
+        }
+    }
+
+    @Test
+    fun migrate2To3_preservesMotorcycleAndAddsEquipmentProfile() {
+        val databaseName = "migration-test-2-3"
+        helper.createDatabase(databaseName, 2).apply {
+            execSQL(
+                """INSERT INTO motorcycles
+                    (id,name,manufacturer,model,variant,year,purchaseDateEpochDay,purchaseType,purchasePriceCentavos,
+                    seller,secondHand,initialOdometerKm,currentOdometerKm,plateNumber,engineNumber,chassisNumber,
+                    registrationExpiryEpochDay,insuranceExpiryEpochDay,isFinanced,notes,photoUri,archived,createdAtEpochMillis)
+                    VALUES (1,'NMAX','Yamaha','NMAX','',NULL,NULL,'CASH',NULL,'',0,1,1,'','','',NULL,NULL,0,'',NULL,0,0)
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        helper.runMigrationsAndValidate(databaseName, 3, true, Migrations.MIGRATION_2_3).use { db ->
+            db.query("SELECT name,driveType,coolingType FROM motorcycles WHERE id=1").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("NMAX", cursor.getString(0))
+                assertEquals("UNKNOWN", cursor.getString(1))
+                assertEquals("UNKNOWN", cursor.getString(2))
             }
         }
     }

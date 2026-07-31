@@ -43,7 +43,7 @@ import com.motocare.app.data.local.entity.ServiceRecordItemEntity
         CoveragePlanEntity::class,
         AttachmentReferenceEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class MotoCareDatabase : RoomDatabase() {

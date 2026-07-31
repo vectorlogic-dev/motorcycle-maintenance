@@ -12,10 +12,12 @@ MotoCare's starter schedule is a conservative, model-agnostic starting point for
 | Air filter inspection | 4,000 km | 365 days | Suzuki lists inspection at 4,000 km or 12 months and warns that dusty or flooded-road use requires shorter intervals. |
 | Brake system inspection | 4,000 km | 365 days | Suzuki lists brake inspection at 4,000 km or 12 months. |
 | Spark plug inspection | 6,000 km | 365 days | Yamaha Philippines lists replacement at 6,000 km; Suzuki lists inspection at 4,000 km and replacement at 8,000 km. |
-| Drive chain service, if fitted | 1,000 km | — | Honda lists chain inspection and lubrication every 1,000 km on applicable models. |
+| Drive chain service | 1,000 km | — | Included for chain-drive profiles. Honda lists chain inspection and lubrication every 1,000 km on applicable models. |
+| Drive belt inspection | 4,000 km | 365 days | Included for belt/CVT profiles. Suzuki lists belt inspection at 4,000 km or 12 months and replacement at a model-specific distance. |
+| Coolant replacement | — | 1,095 days | Included for liquid-cooled profiles. Honda lists a three-year replacement interval on applicable models. |
 | Brake fluid replacement, if fitted | — | 730 days | Honda and Suzuki list replacement every two years for applicable hydraulic systems. |
 
-Distance and time are evaluated together; the first limit reached becomes due. Intervals should be shortened for severe, wet, dusty, high-load, or commercial use when the manufacturer calls for it.
+Distance and time are evaluated together; the first limit reached becomes due. Drive-chain, drive-belt, and coolant items are included only when the user selects the matching equipment profile. Intervals should be shortened for severe, wet, dusty, high-load, or commercial use when the manufacturer calls for it.
 
 ## Official references
 
@@ -24,4 +26,4 @@ Distance and time are evaluated together; the first limit reached becomes due. I
 - [Honda CMX1100 maintenance schedule](https://webom.hondamotopub.com/webom/HMEE/MLA250/html/GMT004001.html)
 - [Suzuki Address 110 owner's manual](https://suzukimotorcycles.com.au/wp-content/uploads/2024/07/ADDRESS-110-Owners-Manual-99011-01K58-01A.pdf)
 
-Official schedules vary materially by model. MotoCare intentionally excludes model-specific coolant, valve-clearance, final-drive, belt, and filter replacement intervals from the generic starter set.
+Official schedules vary materially by model. MotoCare intentionally excludes model-specific valve-clearance, shaft-drive, belt-replacement, and filter-replacement intervals from the generic starter set.

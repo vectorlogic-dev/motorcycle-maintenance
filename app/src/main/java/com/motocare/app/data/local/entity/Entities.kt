@@ -18,6 +18,8 @@ data class MotorcycleEntity(
     val purchasePriceCentavos: Long? = null,
     val seller: String = "",
     val secondHand: Boolean = false,
+    val driveType: String = "UNKNOWN",
+    val coolingType: String = "UNKNOWN",
     val initialOdometerKm: Long,
     val currentOdometerKm: Long,
     val plateNumber: String = "",

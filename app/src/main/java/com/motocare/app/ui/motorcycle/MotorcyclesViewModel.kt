@@ -28,7 +28,14 @@ class MotorcyclesViewModel @Inject constructor(
         if (motorcycle.id == 0L) {
             val id = repository.add(motorcycle)
             odometers.addReading(id, motorcycle.initialOdometerKm, System.currentTimeMillis(), "Starting odometer", false)
-            maintenance.addAll(starterSchedules.create(id, motorcycle.currentOdometerKm))
+            maintenance.addAll(
+                starterSchedules.create(
+                    motorcycleId = id,
+                    currentOdometerKm = motorcycle.currentOdometerKm,
+                    driveType = motorcycle.driveType,
+                    coolingType = motorcycle.coolingType,
+                ),
+            )
             preferences.selectMotorcycle(id)
         } else repository.update(motorcycle)
     }

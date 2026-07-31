@@ -13,4 +13,11 @@ object Migrations {
             db.execSQL("UPDATE motorcycles SET purchaseType = CASE WHEN isFinanced = 1 THEN 'FINANCED' ELSE 'UNKNOWN' END")
         }
     }
+
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE motorcycles ADD COLUMN driveType TEXT NOT NULL DEFAULT 'UNKNOWN'")
+            db.execSQL("ALTER TABLE motorcycles ADD COLUMN coolingType TEXT NOT NULL DEFAULT 'UNKNOWN'")
+        }
+    }
 }

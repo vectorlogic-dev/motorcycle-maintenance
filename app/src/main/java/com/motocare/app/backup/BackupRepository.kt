@@ -45,7 +45,7 @@ class BackupRepository @Inject constructor(
         }
         val root = JSONObject()
             .put("format", "MotoCare backup")
-            .put("schemaVersion", 2)
+            .put("schemaVersion", 3)
             .put("exportedAt", Instant.now().toString())
             .put("tables", tableData)
         context.contentResolver.openOutputStream(uri, "wt")?.bufferedWriter()?.use { it.write(root.toString(2)) }
@@ -62,7 +62,7 @@ class BackupRepository @Inject constructor(
         val root = JSONObject(text)
         require(root.optString("format") == "MotoCare backup") { "Not a MotoCare backup" }
         val schemaVersion = root.optInt("schemaVersion")
-        require(schemaVersion in 1..2) { "Unsupported backup version" }
+        require(schemaVersion in 1..3) { "Unsupported backup version" }
         val data = root.getJSONObject("tables")
         database.withTransaction {
             val db = database.openHelper.writableDatabase
@@ -71,7 +71,10 @@ class BackupRepository @Inject constructor(
                 val rows = data.optJSONArray(table) ?: JSONArray()
                 repeat(rows.length()) { index ->
                     val row = rows.getJSONObject(index)
-                    if (schemaVersion == 1 && table == "motorcycles") row.upgradeMotorcycleFromV1()
+                    if (table == "motorcycles") {
+                        if (schemaVersion == 1) row.upgradeMotorcycleFromV1()
+                        if (schemaVersion <= 2) row.upgradeMotorcycleFromV2()
+                    }
                     val values = ContentValues()
                     row.keys().forEach { key -> values.putJson(key, row.get(key)) }
                     check(db.insert(table, android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE, values) != -1L) {
@@ -91,6 +94,11 @@ class BackupRepository @Inject constructor(
         if (!has("purchasePriceCentavos")) put("purchasePriceCentavos", JSONObject.NULL)
         if (!has("seller")) put("seller", "")
         if (!has("secondHand")) put("secondHand", false)
+    }
+
+    private fun JSONObject.upgradeMotorcycleFromV2() {
+        if (!has("driveType")) put("driveType", "UNKNOWN")
+        if (!has("coolingType")) put("coolingType", "UNKNOWN")
     }
 
     suspend fun writeCsv(uri: Uri, table: String) = withContext(Dispatchers.IO) {

@@ -84,6 +84,8 @@ class RepositoryOperationsTest {
             StarterMaintenanceScheduleFactory().create(
                 motorcycleId = motorcycleId,
                 currentOdometerKm = 8_500,
+                driveType = "CHAIN",
+                coolingType = "AIR",
                 startDate = java.time.LocalDate.of(2026, 7, 31),
             ),
         )
@@ -198,6 +200,8 @@ class RepositoryOperationsTest {
         assertEquals(null, restored.purchasePriceCentavos)
         assertEquals("", restored.seller)
         assertEquals(false, restored.secondHand)
+        assertEquals("UNKNOWN", restored.driveType)
+        assertEquals("UNKNOWN", restored.coolingType)
     }
 
     @Test

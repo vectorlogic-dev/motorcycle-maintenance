@@ -27,7 +27,7 @@ object AppModule {
     @Singleton
     fun database(@ApplicationContext context: Context): MotoCareDatabase =
         Room.databaseBuilder(context, MotoCareDatabase::class.java, "motocare.db")
-            .addMigrations(Migrations.MIGRATION_1_2)
+            .addMigrations(Migrations.MIGRATION_1_2, Migrations.MIGRATION_2_3)
             .build()
 
     @Provides fun motorcycleDao(db: MotoCareDatabase): MotorcycleDao = db.motorcycleDao()

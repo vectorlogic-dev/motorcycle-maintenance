@@ -13,9 +13,15 @@ class StarterMaintenanceScheduleFactoryTest {
 
     @Test
     fun `creates researched editable starter schedules from current motorcycle state`() {
-        val schedules = factory.create(motorcycleId = 42, currentOdometerKm = 8_500, startDate)
+        val schedules = factory.create(
+            motorcycleId = 42,
+            currentOdometerKm = 8_500,
+            driveType = "CHAIN",
+            coolingType = "LIQUID",
+            startDate = startDate,
+        )
 
-        assertEquals(6, schedules.size)
+        assertEquals(7, schedules.size)
         assertTrue(schedules.all { it.motorcycleId == 42L })
         assertTrue(schedules.all { it.isEditableTemplate })
         assertTrue(schedules.all { it.source == "RESEARCH_STARTER_V1" })
@@ -28,16 +34,43 @@ class StarterMaintenanceScheduleFactoryTest {
     }
 
     @Test
-    fun `keeps drivetrain and fluid templates limited to applicable trigger types`() {
-        val schedules = factory.create(motorcycleId = 1, currentOdometerKm = 0, startDate)
+    fun `adds only equipment-specific templates selected for the motorcycle`() {
+        val unknown = factory.create(motorcycleId = 1, currentOdometerKm = 0, startDate = startDate)
+        assertEquals(5, unknown.size)
+        assertTrue(
+            unknown.none {
+                it.name.contains("chain", ignoreCase = true) ||
+                    it.name.contains("belt", ignoreCase = true) ||
+                    it.name.contains("coolant", ignoreCase = true)
+            },
+        )
 
-        val chain = schedules.single { it.name == "Drive chain service (if fitted)" }
+        val chainSchedules = factory.create(
+            motorcycleId = 1,
+            currentOdometerKm = 0,
+            driveType = "CHAIN",
+            coolingType = "AIR",
+            startDate = startDate,
+        )
+        val chain = chainSchedules.single { it.name == "Drive chain service" }
         assertEquals(1_000L, chain.intervalKm)
         assertNull(chain.intervalDays)
         assertEquals(1_000L, chain.nextDueOdometerKm)
         assertNull(chain.nextDueEpochDay)
 
-        val brakeFluid = schedules.single { it.name == "Brake fluid replacement (if fitted)" }
+        val liquidBeltSchedules = factory.create(
+            motorcycleId = 1,
+            currentOdometerKm = 0,
+            driveType = "BELT",
+            coolingType = "LIQUID",
+            startDate = startDate,
+        )
+        assertTrue(liquidBeltSchedules.any { it.name == "Drive belt inspection" })
+        val coolant = liquidBeltSchedules.single { it.name == "Coolant replacement" }
+        assertNull(coolant.intervalKm)
+        assertEquals(1_095, coolant.intervalDays)
+
+        val brakeFluid = liquidBeltSchedules.single { it.name == "Brake fluid replacement (if fitted)" }
         assertNull(brakeFluid.intervalKm)
         assertEquals(730, brakeFluid.intervalDays)
         assertNull(brakeFluid.nextDueOdometerKm)

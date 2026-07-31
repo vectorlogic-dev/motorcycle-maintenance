@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.TwoWheeler
 import androidx.compose.material3.AlertDialog
@@ -27,12 +29,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -93,6 +98,17 @@ fun MotorcyclesScreen(contentPadding: PaddingValues, viewModel: MotorcyclesViewM
                                     listOf(bike.manufacturer, bike.model, bike.variant).filter { it.isNotBlank() }.joinToString(" "),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                val equipment = listOfNotNull(
+                                    driveTypeOptions[bike.driveType]?.takeUnless { bike.driveType == "UNKNOWN" },
+                                    coolingTypeOptions[bike.coolingType]?.takeUnless { bike.coolingType == "UNKNOWN" },
+                                )
+                                if (equipment.isNotEmpty()) {
+                                    Text(
+                                        equipment.joinToString(" • "),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                                     Icon(Icons.Outlined.Speed, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                     Text("${"%,d".format(bike.currentOdometerKm)} km", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
@@ -136,6 +152,8 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
     var purchasePrice by remember(existing) { mutableStateOf(existing?.purchasePriceCentavos?.let { "%.2f".format(it / 100.0) }.orEmpty()) }
     var seller by remember(existing) { mutableStateOf(existing?.seller.orEmpty()) }
     var secondHand by remember(existing) { mutableStateOf(existing?.secondHand ?: false) }
+    var driveType by remember(existing) { mutableStateOf(existing?.driveType ?: "UNKNOWN") }
+    var coolingType by remember(existing) { mutableStateOf(existing?.coolingType ?: "UNKNOWN") }
     var initialKm by remember(existing) { mutableStateOf(existing?.initialOdometerKm?.toString() ?: "1") }
     var plate by remember(existing) { mutableStateOf(existing?.plateNumber.orEmpty()) }
     var engine by remember(existing) { mutableStateOf(existing?.engineNumber.orEmpty()) }
@@ -165,6 +183,19 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
                 Field(model, { model = it }, "Model")
                 Field(variant, { variant = it }, "Variant")
                 Field(year, { year = it.filter(Char::isDigit) }, "Year")
+                Text(
+                    "Equipment profile",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                Text(
+                    "Used to include only relevant starter maintenance items.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                ChoiceField("Final drive", driveType, driveTypeOptions) { driveType = it }
+                ChoiceField("Engine cooling", coolingType, coolingTypeOptions) { coolingType = it }
                 MotoCareOptionalDateField(purchaseDate, { purchaseDate = it }, "Purchase date")
                 Text("Purchase type")
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -202,6 +233,7 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
                         name = name.trim(), manufacturer = maker.trim(), model = model.trim(), variant = variant.trim(),
                         year = year.toIntOrNull(), purchaseDateEpochDay = purchaseDate?.toEpochDay(),
                         purchaseType = purchaseType, purchasePriceCentavos = purchasePrice.toCentavosOrNull(), seller = seller.trim(), secondHand = secondHand,
+                        driveType = driveType, coolingType = coolingType,
                         initialOdometerKm = if (existing == null) initialKm.toLong() else base.initialOdometerKm,
                         plateNumber = plate.trim(), engineNumber = engine.trim(), chassisNumber = chassis.trim(),
                         registrationExpiryEpochDay = registration?.toEpochDay(), insuranceExpiryEpochDay = insurance?.toEpochDay(),
@@ -218,3 +250,46 @@ private fun MotorcycleDialog(existing: MotorcycleEntity?, onDismiss: () -> Unit,
 private fun Field(value: String, onChange: (String) -> Unit, label: String, singleLine: Boolean = true) {
     OutlinedTextField(value, onChange, label = { Text(label) }, singleLine = singleLine, modifier = Modifier.fillMaxWidth())
 }
+
+@Composable
+private fun ChoiceField(
+    label: String,
+    selected: String,
+    options: Map<String, String>,
+    onSelected: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge)
+        Box(Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+                Text(options[selected] ?: options.getValue("UNKNOWN"), modifier = Modifier.weight(1f))
+                Icon(Icons.Outlined.ArrowDropDown, contentDescription = null)
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEach { (value, display) ->
+                    DropdownMenuItem(
+                        text = { Text(if (value == selected) "✓ $display" else display) },
+                        onClick = {
+                            onSelected(value)
+                            expanded = false
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+private val driveTypeOptions = linkedMapOf(
+    "UNKNOWN" to "Not sure",
+    "CHAIN" to "Chain",
+    "BELT" to "Belt / CVT",
+    "SHAFT" to "Shaft",
+)
+
+private val coolingTypeOptions = linkedMapOf(
+    "UNKNOWN" to "Not sure",
+    "AIR" to "Air / oil cooled",
+    "LIQUID" to "Liquid cooled",
+)

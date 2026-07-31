@@ -8,21 +8,33 @@ class StarterMaintenanceScheduleFactory @Inject constructor() {
     fun create(
         motorcycleId: Long,
         currentOdometerKm: Long,
+        driveType: String = "UNKNOWN",
+        coolingType: String = "UNKNOWN",
         startDate: LocalDate = LocalDate.now(),
-    ): List<MaintenanceScheduleEntity> = templates.map { template ->
-        MaintenanceScheduleEntity(
-            motorcycleId = motorcycleId,
-            name = template.name,
-            description = template.description,
-            intervalKm = template.intervalKm,
-            intervalDays = template.intervalDays,
-            nextDueOdometerKm = template.intervalKm?.let(currentOdometerKm::plus),
-            nextDueEpochDay = template.intervalDays?.let { startDate.plusDays(it.toLong()).toEpochDay() },
-            reminderLeadKm = template.reminderLeadKm,
-            reminderLeadDays = template.reminderLeadDays,
-            source = SOURCE,
-            isEditableTemplate = true,
-        )
+    ): List<MaintenanceScheduleEntity> {
+        val applicableTemplates = buildList {
+            addAll(commonTemplates)
+            when (driveType) {
+                "CHAIN" -> add(chainTemplate)
+                "BELT" -> add(beltTemplate)
+            }
+            if (coolingType == "LIQUID") add(coolantTemplate)
+        }
+        return applicableTemplates.map { template ->
+            MaintenanceScheduleEntity(
+                motorcycleId = motorcycleId,
+                name = template.name,
+                description = template.description,
+                intervalKm = template.intervalKm,
+                intervalDays = template.intervalDays,
+                nextDueOdometerKm = template.intervalKm?.let(currentOdometerKm::plus),
+                nextDueEpochDay = template.intervalDays?.let { startDate.plusDays(it.toLong()).toEpochDay() },
+                reminderLeadKm = template.reminderLeadKm,
+                reminderLeadDays = template.reminderLeadDays,
+                source = SOURCE,
+                isEditableTemplate = true,
+            )
+        }
     }
 
     private data class Template(
@@ -37,7 +49,7 @@ class StarterMaintenanceScheduleFactory @Inject constructor() {
     private companion object {
         const val SOURCE = "RESEARCH_STARTER_V1"
 
-        val templates = listOf(
+        val commonTemplates = listOf(
             Template(
                 name = "Engine oil change",
                 description = "General road-use starting point. Confirm the oil specification and interval for this motorcycle.",
@@ -64,20 +76,36 @@ class StarterMaintenanceScheduleFactory @Inject constructor() {
                 intervalDays = 365,
             ),
             Template(
-                name = "Drive chain service (if fitted)",
-                description = "Inspect, adjust, clean, and lubricate as applicable. Deactivate this item for belt- or shaft-drive motorcycles.",
-                intervalKm = 1_000,
-                intervalDays = null,
-                reminderLeadKm = 100,
-                reminderLeadDays = 14,
-            ),
-            Template(
                 name = "Brake fluid replacement (if fitted)",
                 description = "For hydraulic brakes only. Replacement requires the correct fluid and safe service procedure.",
                 intervalKm = null,
                 intervalDays = 730,
                 reminderLeadDays = 30,
             ),
+        )
+
+        val chainTemplate = Template(
+            name = "Drive chain service",
+            description = "Inspect, adjust, clean, and lubricate as specified for this motorcycle and riding conditions.",
+            intervalKm = 1_000,
+            intervalDays = null,
+            reminderLeadKm = 100,
+            reminderLeadDays = 14,
+        )
+
+        val beltTemplate = Template(
+            name = "Drive belt inspection",
+            description = "Inspect the drive belt or CVT at the manufacturer interval; replacement mileage varies substantially by model.",
+            intervalKm = 4_000,
+            intervalDays = 365,
+        )
+
+        val coolantTemplate = Template(
+            name = "Coolant replacement",
+            description = "Use only the coolant type and replacement procedure specified for this liquid-cooled motorcycle.",
+            intervalKm = null,
+            intervalDays = 1_095,
+            reminderLeadDays = 30,
         )
     }
 }
